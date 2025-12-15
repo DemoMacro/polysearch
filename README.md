@@ -84,7 +84,11 @@ const search = createPolySearch({
   driver: metaDriver({
     drivers: [
       { driver: duckduckgoDriver(), weight: 0.7 },
-      { driver: googleCSEDriver({ cx: "your-cse-id" }), weight: 0.3, timeout: 5000 },
+      {
+        driver: googleCSEDriver({ cx: "your-cse-id" }),
+        weight: 0.3,
+        timeout: 5000,
+      },
     ],
   }),
 });
@@ -124,7 +128,11 @@ import googleCSEDriver from "polysearch/drivers/google-cse";
 const driver = metaDriver({
   drivers: [
     { driver: duckduckgoDriver(), weight: 0.6 },
-    { driver: googleCSEDriver({ cx: "your-cse-id" }), weight: 0.4, timeout: 3000 },
+    {
+      driver: googleCSEDriver({ cx: "your-cse-id" }),
+      weight: 0.4,
+      timeout: 3000,
+    },
   ],
 });
 
