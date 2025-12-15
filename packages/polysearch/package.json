@@ -1,0 +1,62 @@
+{
+  "name": "polysearch",
+  "version": "0.0.2",
+  "description": "Universal search engine driver library with TypeScript support for multiple search providers",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./drivers/*": {
+      "import": "./dist/drivers/*.mjs",
+      "require": "./dist/drivers/*.cjs",
+      "types": "./dist/drivers/*.d.ts"
+    },
+    "./server": {
+      "import": "./dist/server.mjs",
+      "require": "./dist/server.cjs",
+      "types": "./dist/server.d.ts"
+    }
+  },
+  "scripts": {
+    "dev": "unbuild --stub",
+    "build": "unbuild",
+    "prepack": "pnpm build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DemoMacro/polysearch.git"
+  },
+  "keywords": [
+    "search",
+    "polysearch",
+    "google-cse",
+    "duckduckgo",
+    "search-engine",
+    "autocomplete",
+    "suggestions",
+    "typescript",
+    "driver",
+    "unified-api",
+    "search-api"
+  ],
+  "author": {
+    "name": "Demo Macro",
+    "email": "abc@imst.xyz",
+    "url": "https://imst.xyz/"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/DemoMacro/polysearch/issues"
+  },
+  "homepage": "https://github.com/DemoMacro/polysearch#readme",
+  "dependencies": {
+    "h3": "2.0.1-rc.6",
+    "ofetch": "1.5.1"
+  }
+}

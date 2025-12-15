@@ -1,0 +1,48 @@
+{
+  "name": "@demomacro/polysearch",
+  "version": "0.0.0",
+  "description": "Universal search engine driver supporting Google CSE, DuckDuckGo, and more with unified API",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r dev",
+    "build": "pnpm -r build",
+    "lint": "basis lint --all",
+    "postinstall": "pnpm dev && basis git setup"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DemoMacro/polysearch.git"
+  },
+  "keywords": [
+    "search",
+    "polysearch",
+    "google-cse",
+    "duckduckgo",
+    "search-engine",
+    "autocomplete",
+    "suggestions",
+    "typescript",
+    "driver-pattern",
+    "unified-api"
+  ],
+  "author": {
+    "name": "Demo Macro",
+    "email": "abc@imst.xyz",
+    "url": "https://imst.xyz/"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/DemoMacro/polysearch/issues"
+  },
+  "homepage": "https://github.com/DemoMacro/polysearch#readme",
+  "devDependencies": {
+    "@funish/basis": "0.1.2",
+    "@prettier/plugin-oxc": "0.0.4",
+    "@types/node": "24.10.1",
+    "oxlint": "1.28.0",
+    "oxlint-tsgolint": "0.6.0",
+    "prettier": "3.6.2",
+    "unbuild": "3.6.1"
+  },
+  "packageManager": "pnpm@10.22.0+sha512.bf049efe995b28f527fd2b41ae0474ce29186f7edcb3bf545087bd61fbbebb2bf75362d1307fda09c2d288e1e499787ac12d4fcb617a974718a6051f2eee741c"
+}
