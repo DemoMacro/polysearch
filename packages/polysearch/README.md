@@ -33,6 +33,7 @@ $ pnpm add polysearch
 
 ```typescript
 import { createPolySearch } from "polysearch";
+import metaDriver from "polysearch/drivers/meta";
 import googleCSEDriver from "polysearch/drivers/google-cse";
 import duckduckgoDriver from "polysearch/drivers/duckduckgo";
 
@@ -46,6 +47,16 @@ const googleSearch = createPolySearch({
 // Create search manager with DuckDuckGo driver
 const duckDuckGoSearch = createPolySearch({
   driver: duckduckgoDriver(),
+});
+
+// Create search manager with Meta driver (combines multiple engines)
+const metaSearch = createPolySearch({
+  driver: metaDriver({
+    drivers: [
+      { driver: duckduckgoDriver(), weight: 0.7 },
+      { driver: googleCSEDriver({ cx: "your-cse-id" }), weight: 0.3, timeout: 5000 },
+    ],
+  }),
 });
 ```
 
@@ -124,6 +135,28 @@ if (searchResults.pagination) {
 ```
 
 ## Available Drivers
+
+### Meta Driver
+
+```typescript
+import metaDriver from "polysearch/drivers/meta";
+import duckduckgoDriver from "polysearch/drivers/duckduckgo";
+import googleCSEDriver from "polysearch/drivers/google-cse";
+
+const driver = metaDriver({
+  drivers: [
+    { driver: duckduckgoDriver(), weight: 0.6 },
+    { driver: googleCSEDriver({ cx: "your-cse-id" }), weight: 0.4, timeout: 3000 },
+  ],
+});
+
+// Features:
+// - Combines multiple search engines with weighted results
+// - Parallel execution with configurable timeouts
+// - Automatic result deduplication by URL
+// - Fault-tolerant: continues even if some drivers fail
+// - Configurable driver weights and timeouts
+```
 
 ### Google CSE Driver
 
@@ -227,6 +260,18 @@ interface GoogleCSEDriverOptions {
 ```typescript
 interface DuckDuckGoDriverOptions {
   // No configuration required
+}
+```
+
+##### MetaDriverOptions
+
+```typescript
+interface MetaDriverOptions {
+  drivers: Array<{
+    driver: Driver;
+    weight?: number; // Default: 1.0
+    timeout?: number; // Timeout in ms for this driver
+  }>;
 }
 ```
 
