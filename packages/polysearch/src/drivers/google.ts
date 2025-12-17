@@ -4,7 +4,6 @@ import type { Driver, DriverOptions, SuggestionOptions } from "..";
 // Google Suggestion specific options
 export interface GoogleSuggestionOptions extends SuggestionOptions {
   hl?: string; // Interface language
-  acceptLanguage?: string | { language: string; q?: number }[]; // Accept-Language header
   userAgent?: string; // Custom User-Agent header
 }
 
@@ -21,25 +20,6 @@ export interface GoogleSuggestionItem {
 // Default User-Agent header
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
-
-// Helper function to generate Accept-Language header from array or string
-function buildAcceptLanguage(
-  acceptLanguage?: string | { language: string; q?: number }[],
-): string {
-  if (!acceptLanguage) return "en-US,en;q=0.9";
-
-  if (typeof acceptLanguage === "string") {
-    return acceptLanguage;
-  }
-
-  // Handle array of language codes with quality values
-  return acceptLanguage
-    .map((item) => {
-      const quality = item.q !== undefined ? item.q : 1.0;
-      return `${item.language};q=${quality.toFixed(1)}`;
-    })
-    .join(",");
-}
 
 export default function googleDriver(options: DriverOptions = {}): Driver {
   return {
@@ -74,9 +54,6 @@ export default function googleDriver(options: DriverOptions = {}): Driver {
           method: "GET",
           headers: {
             Accept: "*/*",
-            "Accept-Language": buildAcceptLanguage(
-              suggestOptions.acceptLanguage,
-            ),
             "User-Agent": suggestOptions.userAgent || DEFAULT_USER_AGENT,
             Referer: "https://www.google.com/",
             "sec-fetch-dest": "empty",

@@ -14,7 +14,6 @@ export interface GoogleCSESearchOptions extends SearchOptions {
   hl?: string; // Interface language
   lr?: string; // Language restriction
   safe?: "active" | "off";
-  acceptLanguage?: string | { language: string; q?: number }[]; // Accept-Language header
   userAgent?: string; // Custom User-Agent header
 }
 
@@ -89,7 +88,6 @@ async function getCSEData(
       method: "GET",
       headers: {
         Accept: "*/*",
-        "Accept-Language": buildAcceptLanguage(), // Will use default for getCSEData
         "User-Agent": DEFAULT_USER_AGENT,
         Referer: `https://cse.google.com/cse?cx=${cx}`,
       },
@@ -118,25 +116,6 @@ async function getCSEData(
 // Default User-Agent header
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
-
-// Helper function to generate Accept-Language header from array or string
-function buildAcceptLanguage(
-  acceptLanguage?: string | { language: string; q?: number }[],
-): string {
-  if (!acceptLanguage) return "en-US,en;q=0.9";
-
-  if (typeof acceptLanguage === "string") {
-    return acceptLanguage;
-  }
-
-  // Handle array of language codes with quality values
-  return acceptLanguage
-    .map((item) => {
-      const quality = item.q !== undefined ? item.q : 1.0;
-      return `${item.language};q=${quality.toFixed(1)}`;
-    })
-    .join(",");
-}
 
 export default function googleCSEDriver(
   options: GoogleCSEDriverOptions,
@@ -193,9 +172,6 @@ export default function googleCSEDriver(
           method: "GET",
           headers: {
             Accept: "*/*",
-            "Accept-Language": buildAcceptLanguage(
-              searchOptions.acceptLanguage,
-            ),
             "User-Agent": searchOptions.userAgent || DEFAULT_USER_AGENT,
             Referer: `https://cse.google.com/cse?cx=${cx}`,
             "sec-fetch-dest": "script",
@@ -270,7 +246,6 @@ export default function googleCSEDriver(
     suggest: async (
       suggestOptions: SuggestionOptions & {
         hl?: string;
-        acceptLanguage?: string | { language: string; q?: number }[];
       },
     ): Promise<string[]> => {
       const { query } = suggestOptions;
@@ -292,9 +267,6 @@ export default function googleCSEDriver(
           method: "GET",
           headers: {
             Accept: "*/*",
-            "Accept-Language": buildAcceptLanguage(
-              suggestOptions.acceptLanguage,
-            ),
           },
         });
 
