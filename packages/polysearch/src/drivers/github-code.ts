@@ -156,7 +156,8 @@ export default function githubCodeDriver(
           results: limitedResults,
           totalResults: response.total_count,
           pagination: {
-            incomplete_results: response.incomplete_results,
+            page: searchOptions.page || 1,
+            perPage: searchOptions.perPage || 30,
           },
         };
       } catch (error) {

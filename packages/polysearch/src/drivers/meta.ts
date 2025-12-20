@@ -149,8 +149,8 @@ export default function metaDriver(options: MetaDriverOptions): Driver {
 
         // Apply limit if specified
         let finalResults = deduplicateResults(successfulResults);
-        if (searchOptions.limit && searchOptions.limit > 0) {
-          finalResults = finalResults.slice(0, searchOptions.limit);
+        if (searchOptions.perPage && searchOptions.perPage > 0) {
+          finalResults = finalResults.slice(0, searchOptions.perPage);
         }
 
         return {

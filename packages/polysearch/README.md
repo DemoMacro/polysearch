@@ -9,7 +9,7 @@
 
 ## Features
 
-- 🌐 **Multi-Driver Support**: Google CSE, DuckDuckGo with unified API
+- 🌐 **Multi-Driver Support**: Google CSE, DuckDuckGo, NPM Registry with unified API
 - 📝 **TypeScript First**: Full type safety with comprehensive search result types
 - 🔧 **Flexible Operations**: Support for search, suggestions, and pagination where providers allow
 - 🚀 **High Performance**: Built on modern web APIs with minimal dependencies
@@ -36,6 +36,7 @@ import { createPolySearch } from "polysearch";
 import metaDriver from "polysearch/drivers/meta";
 import googleCSEDriver from "polysearch/drivers/google-cse";
 import duckduckgoDriver from "polysearch/drivers/duckduckgo";
+import npmDriver from "polysearch/drivers/npm";
 
 // Create search manager with Google CSE driver
 const googleSearch = createPolySearch({
@@ -47,6 +48,15 @@ const googleSearch = createPolySearch({
 // Create search manager with DuckDuckGo driver
 const duckDuckGoSearch = createPolySearch({
   driver: duckduckgoDriver(),
+});
+
+// Create search manager with NPM driver
+const npmSearch = createPolySearch({
+  driver: npmDriver({
+    quality: 0.4, // Emphasize package quality
+    popularity: 0.3, // Emphasize popularity
+    maintenance: 0.3, // Emphasize maintenance status
+  }),
 });
 
 // Create search manager with Meta driver (combines multiple engines)
@@ -70,7 +80,7 @@ const metaSearch = createPolySearch({
 // Get all results for a query
 const results = await googleSearch.search({
   query: "TypeScript",
-  limit: 10,
+  perPage: 10,
 });
 
 console.log(`Found ${results.results.length} results`);
@@ -83,13 +93,13 @@ results.results.forEach((result, index) => {
 // Get specific result type with limit
 const limitedResults = await duckDuckGoSearch.search({
   query: "machine learning",
-  limit: 5,
+  perPage: 5,
 });
 
 // Get a single result
 const firstResult = await googleSearch.search({
   query: "React hooks",
-  limit: 1,
+  perPage: 1,
 });
 ```
 
@@ -112,10 +122,11 @@ const allSuggestions = await Promise.all(
 ### Working with Pagination and Metadata
 
 ```typescript
-// Search with Google CSE (supports pagination)
+// Search with pagination support
 const searchResults = await googleSearch.search({
   query: "machine learning",
-  limit: 20,
+  page: 1,
+  perPage: 20,
 });
 
 console.log("Total results:", searchResults.totalResults);
@@ -123,19 +134,26 @@ console.log("Results count:", searchResults.results.length);
 
 // Access pagination information
 if (searchResults.pagination) {
-  console.log("Current page:", searchResults.pagination.currentPageIndex);
-  console.log("Pages:", searchResults.pagination.pages);
-  console.log("Has next page:", searchResults.pagination.hasNextPage);
-
-  // Navigate to next page
-  if (searchResults.pagination.hasNextPage) {
-    const nextPage =
-      searchResults.pagination.pages[
-        searchResults.pagination.currentPageIndex + 1
-      ];
-    console.log("Next page start:", nextPage.start);
-  }
+  console.log("Current page:", searchResults.pagination.page);
+  console.log("PerPage:", searchResults.pagination.perPage);
 }
+
+// Search NPM packages with pagination
+const npmResults = await npmSearch.search({
+  query: "react",
+  page: 2,
+  perPage: 10,
+});
+
+console.log(
+  `NPM packages - Page ${npmResults.pagination?.page}: ${npmResults.results.length} results`,
+);
+
+// Search with custom page size
+const customResults = await googleSearch.search({
+  query: "typescript",
+  perPage: 15,
+});
 ```
 
 ## Available Drivers
@@ -194,6 +212,28 @@ const driver = duckduckgoDriver(); // No configuration required
 // - Zero-configuration setup
 ```
 
+### NPM Registry Driver
+
+```typescript
+import npmDriver from "polysearch/drivers/npm";
+
+const driver = npmDriver({
+  registry: "https://registry.npmjs.org", // Optional: custom registry
+  endpoint: "/-/v1/search", // Optional: custom endpoint path
+  quality: 0.4, // Optional: emphasize package quality scoring
+  popularity: 0.3, // Optional: emphasize popularity scoring
+  maintenance: 0.3, // Optional: emphasize maintenance scoring
+});
+
+// Features:
+// - Search npm packages with metadata and scoring
+// - Quality, popularity, and maintenance metrics
+// - Auto-complete suggestions for package names
+// - Configurable scoring weights
+// - Full package information (version, description, links)
+// - True pagination support with page/perPage parameters
+```
+
 ## API Reference
 
 ### Core Functions
@@ -217,7 +257,8 @@ Perform a search query.
 **Parameters:**
 
 - `query` (string) - Search query
-- `limit` (number, optional) - Maximum number of results to return
+- `page` (number, optional) - Page number for pagination (1-based)
+- `perPage` (number, optional) - Results per page for pagination
 
 **Returns:** `Promise<SearchResponse>` - Search results with metadata
 
@@ -239,7 +280,10 @@ Get search suggestions/autocomplete.
 interface SearchResponse {
   results: SearchResult[]; // Array of search results
   totalResults?: number; // Total number of results (if available)
-  pagination?: Record<string, any>; // Pagination information (driver-specific)
+  pagination?: {
+    page?: number; // Current page number (1-based)
+    perPage?: number; // Results per page
+  };
 }
 ```
 
@@ -280,6 +324,18 @@ interface MetaDriverOptions {
     weight?: number; // Default: 1.0
     timeout?: number; // Timeout in ms for this driver
   }>;
+}
+```
+
+##### NPMDriverOptions
+
+```typescript
+interface NPMDriverOptions {
+  registry?: string; // NPM registry URL (default: https://registry.npmjs.org)
+  endpoint?: string; // Search endpoint path (default: /-/v1/search)
+  quality?: number; // Weight for quality scoring (0-1)
+  popularity?: number; // Weight for popularity scoring (0-1)
+  maintenance?: number; // Weight for maintenance scoring (0-1)
 }
 ```
 
@@ -324,6 +380,7 @@ pnpm prepack
 # Test specific drivers
 bun playground/google-cse.ts
 bun playground/duckduckgo.ts
+bun playground/npm.ts
 bun playground/server.ts
 
 # Run linting

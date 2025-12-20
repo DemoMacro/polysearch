@@ -14,13 +14,17 @@ export interface SearchResult {
 export interface SearchResponse {
   results: SearchResult[];
   totalResults?: number;
-  pagination?: Record<string, any>;
+  pagination?: {
+    page?: number;
+    perPage?: number;
+  };
 }
 
 // Search options
 export interface SearchOptions {
   query: string;
-  limit?: number;
+  page?: number;
+  perPage?: number;
   [key: string]: any;
 }
 

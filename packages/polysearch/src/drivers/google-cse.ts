@@ -24,9 +24,8 @@ export interface GoogleCSEPage {
 }
 
 export interface GoogleCSEPagination {
-  currentPageIndex: number;
-  pages: GoogleCSEPage[];
-  hasNextPage: boolean;
+  page?: number;
+  perPage?: number;
 }
 
 export interface GoogleCSEResult {
@@ -145,7 +144,7 @@ export default function googleCSEDriver(
         // Build search URL
         const url = new URL("https://cse.google.com/cse/element/v1");
         url.searchParams.set("rsz", "filtered_cse");
-        url.searchParams.set("num", (searchOptions.limit || 10).toString());
+        url.searchParams.set("num", (searchOptions.perPage || 10).toString());
         url.searchParams.set("hl", searchOptions.hl || "en");
         url.searchParams.set("source", "gcsc");
         url.searchParams.set("cx", cx);
@@ -225,16 +224,14 @@ export default function googleCSEDriver(
           : undefined;
 
         // Extract pagination info
-        const pages: GoogleCSEPage[] = cursor.pages || [];
         const currentPageIndex = cursor.currentPageIndex || 0;
 
         return {
           results,
           totalResults,
           pagination: {
-            currentPageIndex,
-            pages,
-            hasNextPage: pages.length > currentPageIndex + 1,
+            page: currentPageIndex + 1,
+            perPage: 10, // Google CSE typically returns 10 results per page
           },
         };
       } catch (error) {

@@ -108,7 +108,7 @@ export default function duckduckgoDriver(
 
         // Process results
         const processedResults = (
-          options.limit ? allResults.slice(0, options.limit) : allResults
+          options.perPage ? allResults.slice(0, options.perPage) : allResults
         ).map((item: DuckDuckGoResult) => ({
           title:
             extractTitleFromResult(item.Result) ||

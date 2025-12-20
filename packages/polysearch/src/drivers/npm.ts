@@ -134,7 +134,7 @@ export default function npmDriver(options: NPMDriverOptions = {}): Driver {
     options,
 
     search: async (searchOptions: SearchOptions): Promise<SearchResponse> => {
-      const { query, limit = 20 } = searchOptions;
+      const { query } = searchOptions;
 
       if (!query.trim()) {
         return { results: [] };
@@ -142,9 +142,14 @@ export default function npmDriver(options: NPMDriverOptions = {}): Driver {
 
       try {
         // Build search URL with parameters
+        const perPage = searchOptions.perPage || 20;
+        const page = searchOptions.page || 1;
+        const from = (page - 1) * perPage; // Calculate offset
+
         const searchParams = new URLSearchParams({
           text: query,
-          size: Math.min(limit, 250).toString(), // NPM API max is 250
+          size: Math.min(perPage, 250).toString(), // NPM API max is 250
+          from: from.toString(),
         });
 
         // Add optional scoring weights if provided
@@ -178,9 +183,8 @@ export default function npmDriver(options: NPMDriverOptions = {}): Driver {
           results: processedResults,
           totalResults: response.total,
           pagination: {
-            totalResults: response.total,
-            hasMore: limit < response.total,
-            searchTime: response.time,
+            page: page,
+            perPage: perPage,
           },
         };
       } catch (error) {
