@@ -7,7 +7,7 @@
 
 ## Features
 
-- 🔍 **Multi-Engine Support**: Google CSE, DuckDuckGo with unified API
+- 🔍 **Multi-Engine Support**: Google CSE, DuckDuckGo, NPM Registry with unified API
 - 📝 **TypeScript First**: Full type safety with comprehensive search result types
 - 🔧 **Flexible Operations**: Support for search, suggestions, and pagination
 - 🚀 **High Performance**: Built on modern web APIs with minimal dependencies
@@ -37,6 +37,7 @@ pnpm install
 import { createPolySearch } from "polysearch";
 import googleCSEDriver from "polysearch/drivers/google-cse";
 import duckduckgoDriver from "polysearch/drivers/duckduckgo";
+import npmDriver from "polysearch/drivers/npm";
 
 // Create search manager with Google CSE driver
 const googleSearch = createPolySearch({
@@ -48,6 +49,15 @@ const googleSearch = createPolySearch({
 // Create search manager with DuckDuckGo driver
 const duckDuckGoSearch = createPolySearch({
   driver: duckduckgoDriver(),
+});
+
+// Create search manager with NPM Registry driver
+const npmSearch = createPolySearch({
+  driver: npmDriver({
+    quality: 0.4, // Emphasize package quality
+    popularity: 0.3, // Emphasize popularity
+    maintenance: 0.3, // Emphasize maintenance status
+  }),
 });
 
 // Search with Google CSE
@@ -69,6 +79,14 @@ const duckResults = await duckDuckGoSearch.search({
   limit: 5,
 });
 console.log(`DuckDuckGo results: ${duckResults.results.length}`);
+
+// Search with NPM Registry
+const npmResults = await npmSearch.search({
+  query: "react",
+  limit: 10,
+});
+console.log(`NPM packages found: ${npmResults.results.length}`);
+console.log(`Total available: ${npmResults.totalResults}`);
 ```
 
 ### Advanced Usage
@@ -172,6 +190,25 @@ const driver = duckduckgoDriver(); // No configuration required
 // - Zero-configuration setup
 ```
 
+### NPM Registry Driver
+
+```typescript
+import npmDriver from "polysearch/drivers/npm";
+
+const driver = npmDriver({
+  quality: 0.4, // Emphasize package quality scoring
+  popularity: 0.3, // Emphasize popularity scoring
+  maintenance: 0.3, // Emphasize maintenance scoring
+});
+
+// Features:
+// - Search npm packages with metadata and scoring
+// - Quality, popularity, and maintenance metrics
+// - Auto-complete suggestions for package names
+// - Configurable scoring weights
+// - Full package information (version, description, links)
+```
+
 ## Server
 
 ### Quick Start
@@ -272,6 +309,7 @@ pnpm lint
 # Test the implementation
 bun playground/google-cse.ts
 bun playground/duckduckgo.ts
+bun playground/npm.ts
 ```
 
 ## License

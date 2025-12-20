@@ -1,6 +1,6 @@
 {
   "name": "polysearch",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Universal search engine driver library with TypeScript support for multiple search providers",
   "main": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -37,6 +37,9 @@
     "polysearch",
     "google-cse",
     "duckduckgo",
+    "npm",
+    "npm-registry",
+    "package-search",
     "search-engine",
     "autocomplete",
     "suggestions",
