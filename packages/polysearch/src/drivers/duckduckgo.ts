@@ -5,7 +5,9 @@ import type {
   SuggestionOptions,
   SearchOptions,
   SearchResponse,
+  CacheConfig,
 } from "..";
+import { createCache } from "../cache";
 
 // DuckDuckGo API response types
 export interface DuckDuckGoResult {
@@ -49,21 +51,40 @@ export interface DuckDuckGoSuggestion {
 }
 
 export interface DuckDuckGoDriverOptions extends DriverOptions {
-  // DuckDuckGo doesn't require any specific options for basic usage
+  cache?: CacheConfig;
 }
 
 export default function duckduckgoDriver(
-  options: DuckDuckGoDriverOptions = {},
+  driverOptions: DuckDuckGoDriverOptions = {},
 ): Driver {
+  const cache = createCache(driverOptions.cache);
+
   return {
     name: "duckduckgo",
-    options,
+    options: driverOptions,
 
-    search: async (options: SearchOptions): Promise<SearchResponse> => {
-      const { query } = options;
+    search: async (searchOptions: SearchOptions): Promise<SearchResponse> => {
+      const { query } = searchOptions;
 
       if (!query.trim()) {
         return { results: [] };
+      }
+
+      const perPage = searchOptions.perPage || cache.perPage || 20;
+      const cacheKey = `duckduckgo:${query}`;
+
+      // Try cache first (store all results for duckduckgo)
+      const cached = await cache.get(cacheKey);
+      if (cached && cached.results) {
+        // Paginate from cached results
+        const page = searchOptions.page || 1;
+        const offset = (page - 1) * perPage;
+        const paginatedResults = cached.results.slice(offset, offset + perPage);
+
+        return {
+          results: paginatedResults,
+          totalResults: cached.totalResults,
+        };
       }
 
       try {
@@ -106,10 +127,8 @@ export default function duckduckgoDriver(
           });
         }
 
-        // Process results
-        const processedResults = (
-          options.perPage ? allResults.slice(0, options.perPage) : allResults
-        ).map((item: DuckDuckGoResult) => ({
+        // Process all results
+        const processedResults = allResults.map((item: DuckDuckGoResult) => ({
           title:
             extractTitleFromResult(item.Result) ||
             item.Text ||
@@ -119,8 +138,24 @@ export default function duckduckgoDriver(
           snippet: extractTextFromResult(item.Result) || item.Text || "",
         }));
 
-        return {
+        // Cache all results
+        const fullResponse: SearchResponse = {
           results: processedResults,
+          totalResults: allResults.length,
+        };
+
+        await cache.set(cacheKey, fullResponse);
+
+        // Return paginated results
+        const page = searchOptions.page || 1;
+        const offset = (page - 1) * perPage;
+        const paginatedResults = processedResults.slice(
+          offset,
+          offset + perPage,
+        );
+
+        return {
+          results: paginatedResults,
           totalResults: allResults.length,
         };
       } catch (error) {

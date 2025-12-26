@@ -1,9 +1,9 @@
 /**
- * GitHub Meta Driver Example - Combining multiple GitHub search types
+ * GitHub Hybrid Driver Example - Combining multiple GitHub search types
  */
 
 import { createPolySearch } from "../packages/polysearch/src/search";
-import metaDriver from "../packages/polysearch/src/drivers/meta";
+import hybridDriver from "../packages/polysearch/src/drivers/hybrid";
 import githubRepoDriver from "../packages/polysearch/src/drivers/github-repo";
 import githubCodeDriver from "../packages/polysearch/src/drivers/github-code";
 import githubUserDriver from "../packages/polysearch/src/drivers/github-user";
@@ -11,13 +11,13 @@ import githubIssueDriver from "../packages/polysearch/src/drivers/github-issue";
 import githubTopicDriver from "../packages/polysearch/src/drivers/github-topic";
 import githubLabelDriver from "../packages/polysearch/src/drivers/github-label";
 
-console.log("<🔍 GitHub Meta Driver Example\n");
+console.log("<🔍 GitHub Hybrid Driver Example\n");
 
 const token = process.env.GITHUB_TOKEN;
 
-// Create meta driver combining GitHub search types
-const metaSearch = createPolySearch({
-  driver: metaDriver({
+// Create hybrid driver combining GitHub search types
+const hybridSearch = createPolySearch({
+  driver: hybridDriver({
     drivers: [
       {
         driver: githubRepoDriver({ token }),
@@ -53,15 +53,15 @@ const metaSearch = createPolySearch({
   }),
 });
 
-async function testMetaSearch() {
+async function testHybridSearch() {
   try {
-    console.log("=== Testing GitHub Meta Search ===");
+    console.log("=== Testing GitHub Hybrid Search ===");
 
     // Search across multiple GitHub content types
     console.log(
       "Searching for 'react' across GitHub (repos, code, users, issues, topics, labels)...",
     );
-    const results1 = await metaSearch.search({
+    const results1 = await hybridSearch.search({
       query: "react",
       limit: 10,
     });
@@ -69,13 +69,14 @@ async function testMetaSearch() {
     console.log("Results by type:");
     results1.results.forEach((result, index) => {
       console.log(`  ${index + 1}. ${result.title}`);
+      console.log(`     Sources: [${result.sources?.join(", ") || "unknown"}]`);
       console.log(`     ${result.snippet?.substring(0, 100)}...`);
       console.log();
     });
 
     // Search for TypeScript-specific content
     console.log("Searching for 'typescript' across GitHub...");
-    const results2 = await metaSearch.search({
+    const results2 = await hybridSearch.search({
       query: "typescript",
       limit: 8,
     });
@@ -84,7 +85,7 @@ async function testMetaSearch() {
     // Search with different weights for different scenarios
     console.log("\nCreating search focused on developers...");
     const developerSearch = createPolySearch({
-      driver: metaDriver({
+      driver: hybridDriver({
         drivers: [
           {
             driver: githubUserDriver({ token }),
@@ -105,15 +106,16 @@ async function testMetaSearch() {
     console.log("Developer-focused results:", devResults.results.length);
     devResults.results.forEach((result, index) => {
       console.log(`  ${index + 1}. ${result.title}`);
+      console.log(`     Sources: [${result.sources?.join(", ") || "unknown"}]`);
     });
 
     // Test suggestions (only github-issue driver supports suggestions)
     console.log("\nTesting suggestions (only issues driver supports)...");
-    const suggestions = await metaSearch.suggest({ query: "bug" });
+    const suggestions = await hybridSearch.suggest({ query: "bug" });
     console.log("Suggestions for 'bug':", suggestions);
   } catch (error) {
-    console.error("GitHub meta search test failed:", error);
+    console.error("GitHub hybrid search test failed:", error);
   }
 }
 
-void testMetaSearch();
+void testHybridSearch();

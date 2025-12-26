@@ -8,3 +8,6 @@ export * from "./types";
 
 // Export all search management functions
 export * from "./search";
+
+// Export cache utilities
+export * from "./cache";

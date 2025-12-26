@@ -1,9 +1,17 @@
 import { ofetch } from "ofetch";
-import type { Driver, DriverOptions, SearchOptions, SearchResponse } from "..";
+import type {
+  Driver,
+  DriverOptions,
+  SearchOptions,
+  SearchResponse,
+  CacheConfig,
+} from "..";
+import { createCache } from "../cache";
 
 // GitHub Code Driver Options
 export interface GitHubCodeDriverOptions extends DriverOptions {
   token?: string; // GitHub Personal Access Token (required for code search)
+  cache?: CacheConfig;
 }
 
 // GitHub Code Search Options - matches official API parameters
@@ -49,9 +57,10 @@ export interface GitHubCodeSearchResponse {
 }
 
 export default function githubCodeDriver(
-  options: GitHubCodeDriverOptions = {},
+  driverOptions: GitHubCodeDriverOptions = {},
 ): Driver {
-  const { token } = options;
+  const { token } = driverOptions;
+  const cache = createCache(driverOptions.cache);
 
   // Helper function to build query string with qualifiers
   function buildQuery(
@@ -93,12 +102,12 @@ export default function githubCodeDriver(
 
   return {
     name: "github-code",
-    options,
+    options: driverOptions,
 
     search: async (
       searchOptions: GitHubCodeSearchOptions,
     ): Promise<SearchResponse> => {
-      const { query, limit = 30, sort, order } = searchOptions;
+      const { query } = searchOptions;
 
       if (!query.trim()) {
         return { results: [] };
@@ -110,6 +119,16 @@ export default function githubCodeDriver(
         return { results: [] };
       }
 
+      const limit = searchOptions.limit || cache.perPage || 30;
+      const page = searchOptions.page || 1;
+      const cacheKey = `github-code:${query}:${page}:${limit}`;
+
+      // Try cache first
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+
       try {
         // Build GitHub API query
         const apiQuery = buildQuery(query, searchOptions);
@@ -119,11 +138,16 @@ export default function githubCodeDriver(
         });
 
         // Add sort parameters if provided
-        if (sort) {
-          searchParams.set("sort", sort);
-          if (order) {
-            searchParams.set("order", order);
+        if (searchOptions.sort) {
+          searchParams.set("sort", searchOptions.sort);
+          if (searchOptions.order) {
+            searchParams.set("order", searchOptions.order);
           }
+        }
+
+        // Add page parameter if provided
+        if (page && page > 1) {
+          searchParams.set("page", page.toString());
         }
 
         // Build headers
@@ -146,35 +170,27 @@ export default function githubCodeDriver(
         const results = response.items.map((item): any => ({
           title: `${item.repository.full_name}/${item.path}`,
           url: item.html_url,
-          snippet: `Found in ${item.repository.full_name} - ${item.repository.description || "No description"}`,
+          snippet: item.path,
         }));
 
         // Apply limit if needed
         const limitedResults = results.slice(0, limit);
 
-        return {
+        const result: SearchResponse = {
           results: limitedResults,
           totalResults: response.total_count,
           pagination: {
-            page: searchOptions.page || 1,
-            perPage: searchOptions.perPage || 30,
+            page: page,
+            perPage: limit,
           },
         };
+
+        // Cache the result
+        await cache.set(cacheKey, result);
+
+        return result;
       } catch (error) {
         console.error("GitHub Code Search Error:", error);
-
-        // Handle rate limit errors
-        if (error instanceof Error && error.message.includes("403")) {
-          console.error("GitHub API rate limit exceeded.");
-        }
-
-        // Handle authentication errors
-        if (error instanceof Error && error.message.includes("401")) {
-          console.error(
-            "GitHub Code Search requires valid authentication token.",
-          );
-        }
-
         return { results: [] };
       }
     },

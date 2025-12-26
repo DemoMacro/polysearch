@@ -1,8 +1,16 @@
 import { ofetch } from "ofetch";
-import type { Driver, DriverOptions, SearchOptions, SearchResponse } from "..";
+import type {
+  Driver,
+  DriverOptions,
+  SearchOptions,
+  SearchResponse,
+  CacheConfig,
+} from "..";
+import { createCache } from "../cache";
 
 // GitHub Commit Driver Options
 export interface GitHubCommitDriverOptions extends DriverOptions {
+  cache?: CacheConfig;
   token?: string; // GitHub Personal Access Token (required for commit search)
 }
 
@@ -178,18 +186,19 @@ export interface GitHubCommitSearchResponse {
 }
 
 export default function githubCommitDriver(
-  options: GitHubCommitDriverOptions = {},
+  driverOptions: GitHubCommitDriverOptions = {},
 ): Driver {
-  const { token } = options;
+  const { token } = driverOptions;
+  const cache = createCache(driverOptions.cache);
 
   return {
     name: "github-commit",
-    options,
+    options: driverOptions,
 
     search: async (
       searchOptions: GitHubCommitSearchOptions,
     ): Promise<SearchResponse> => {
-      const { query, limit = 30, sort, order, per_page, page } = searchOptions;
+      const { query } = searchOptions;
 
       if (!query.trim()) {
         return { results: [] };
@@ -201,23 +210,34 @@ export default function githubCommitDriver(
         return { results: [] };
       }
 
+      const limit =
+        searchOptions.per_page || searchOptions.limit || cache.perPage || 30;
+      const page = searchOptions.page || 1;
+      const cacheKey = `github-commit:${query}:${page}:${limit}`;
+
+      // Try cache first
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+
       try {
         // Build GitHub API query
         const searchParams = new URLSearchParams({
           q: query,
-          per_page: Math.min(per_page || limit, 100).toString(), // Use per_page if provided, else fallback to limit
+          per_page: Math.min(limit, 100).toString(),
         });
 
         // Add page parameter if provided
-        if (page && page > 0) {
+        if (page && page > 1) {
           searchParams.set("page", page.toString());
         }
 
         // Add sort parameters if provided
-        if (sort) {
-          searchParams.set("sort", sort);
-          if (order) {
-            searchParams.set("order", order);
+        if (searchOptions.sort) {
+          searchParams.set("sort", searchOptions.sort);
+          if (searchOptions.order) {
+            searchParams.set("order", searchOptions.order);
           }
         }
 
@@ -244,32 +264,24 @@ export default function githubCommitDriver(
           snippet: `Commit by ${commit.author?.login || commit.commit.author.name} in ${commit.repository.full_name}`,
         }));
 
-        // Apply limit if needed (use per_page if provided, else fallback to limit)
-        const limitedResults = results.slice(0, per_page || limit);
+        // Apply limit if needed
+        const limitedResults = results.slice(0, limit);
 
-        return {
+        const result: SearchResponse = {
           results: limitedResults,
           totalResults: response.total_count,
           pagination: {
-            page: searchOptions.page || 1,
-            perPage: searchOptions.perPage || 30,
+            page: page,
+            perPage: limit,
           },
         };
+
+        // Cache the result
+        await cache.set(cacheKey, result);
+
+        return result;
       } catch (error) {
         console.error("GitHub Commit Search Error:", error);
-
-        // Handle rate limit errors
-        if (error instanceof Error && error.message.includes("403")) {
-          console.error("GitHub API rate limit exceeded.");
-        }
-
-        // Handle authentication errors
-        if (error instanceof Error && error.message.includes("401")) {
-          console.error(
-            "GitHub Commit Search requires valid authentication token.",
-          );
-        }
-
         return { results: [] };
       }
     },

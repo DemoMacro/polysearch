@@ -13,6 +13,7 @@
 - 📝 **TypeScript First**: Full type safety with comprehensive search result types
 - 🔧 **Flexible Operations**: Support for search, suggestions, and pagination where providers allow
 - 🚀 **High Performance**: Built on modern web APIs with minimal dependencies
+- 💾 **Built-in Caching**: Optional LRU cache support for improved performance and reduced API calls
 
 ## Installation
 
@@ -33,7 +34,7 @@ $ pnpm add polysearch
 
 ```typescript
 import { createPolySearch } from "polysearch";
-import metaDriver from "polysearch/drivers/meta";
+import hybridDriver from "polysearch/drivers/hybrid";
 import googleCSEDriver from "polysearch/drivers/google-cse";
 import duckduckgoDriver from "polysearch/drivers/duckduckgo";
 import npmDriver from "polysearch/drivers/npm";
@@ -45,23 +46,23 @@ const googleSearch = createPolySearch({
   }),
 });
 
-// Create search manager with DuckDuckGo driver
+// Create search manager with DuckDuckGo driver (with default caching)
 const duckDuckGoSearch = createPolySearch({
-  driver: duckduckgoDriver(),
-});
-
-// Create search manager with NPM driver
-const npmSearch = createPolySearch({
-  driver: npmDriver({
-    quality: 0.4, // Emphasize package quality
-    popularity: 0.3, // Emphasize popularity
-    maintenance: 0.3, // Emphasize maintenance status
+  driver: duckduckgoDriver({
+    cache: { perPage: 20, ttl: 3600, maxItems: 200 },
   }),
 });
 
-// Create search manager with Meta driver (combines multiple engines)
-const metaSearch = createPolySearch({
-  driver: metaDriver({
+// Create search manager with NPM driver (caching disabled)
+const npmSearch = createPolySearch({
+  driver: npmDriver({
+    cache: false, // Disable caching
+  }),
+});
+
+// Create search manager with Hybrid driver
+const hybridSearch = createPolySearch({
+  driver: hybridDriver({
     drivers: [
       { driver: duckduckgoDriver(), weight: 0.7 },
       {
@@ -158,14 +159,14 @@ const customResults = await googleSearch.search({
 
 ## Available Drivers
 
-### Meta Driver
+### Hybrid Driver
 
 ```typescript
-import metaDriver from "polysearch/drivers/meta";
+import hybridDriver from "polysearch/drivers/hybrid";
 import duckduckgoDriver from "polysearch/drivers/duckduckgo";
 import googleCSEDriver from "polysearch/drivers/google-cse";
 
-const driver = metaDriver({
+const driver = hybridDriver({
   drivers: [
     { driver: duckduckgoDriver(), weight: 0.6 },
     {
@@ -180,6 +181,7 @@ const driver = metaDriver({
 // - Combines multiple search engines with weighted results
 // - Parallel execution with configurable timeouts
 // - Automatic result deduplication by URL
+// - Source tracking: each result shows which drivers returned it
 // - Fault-tolerant: continues even if some drivers fail
 // - Configurable driver weights and timeouts
 ```
@@ -235,6 +237,46 @@ const driver = npmDriver({
 ```
 
 ## API Reference
+
+### Caching
+
+All drivers support optional caching to improve performance and reduce API calls:
+
+```typescript
+import { createStorage } from "unstorage";
+import memoryDriver from "unstorage/drivers/memory";
+
+// Default LRU cache (100 items, 60s TTL)
+const search1 = createPolySearch({
+  driver: duckduckgoDriver({
+    cache: { perPage: 20, ttl: 300, maxItems: 200 },
+  }),
+});
+
+// Disable caching
+const search2 = createPolySearch({
+  driver: duckduckgoDriver({ cache: false }),
+});
+
+// Custom storage
+const search3 = createPolySearch({
+  driver: duckduckgoDriver({
+    cache: {
+      storage: createStorage({ driver: memoryDriver() }),
+      perPage: 20,
+      ttl: 600,
+    },
+  }),
+});
+```
+
+#### Cache Options
+
+- **perPage** (number) - Default results per page
+- **ttl** (number) - Cache expiration time in seconds (default: 60)
+- **maxItems** (number) - Maximum items in LRU cache (default: 100)
+- **storage** (Storage) - Custom unstorage instance
+- **false** - Disable caching
 
 ### Core Functions
 
@@ -294,6 +336,7 @@ interface SearchResult {
   title: string; // Result title
   url: string; // Result URL
   snippet?: string; // Result description or snippet
+  sources?: string[]; // Array of driver names that returned this result
 }
 ```
 
@@ -315,10 +358,10 @@ interface DuckDuckGoDriverOptions {
 }
 ```
 
-##### MetaDriverOptions
+##### HybridDriverOptions
 
 ```typescript
-interface MetaDriverOptions {
+interface HybridDriverOptions {
   drivers: Array<{
     driver: Driver;
     weight?: number; // Default: 1.0

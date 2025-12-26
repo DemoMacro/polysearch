@@ -5,7 +5,9 @@ import type {
   SuggestionOptions,
   SearchOptions,
   SearchResponse,
+  CacheConfig,
 } from "..";
+import { createCache } from "../cache";
 
 // Google CSE specific search options
 export interface GoogleCSESearchOptions extends SearchOptions {
@@ -75,6 +77,7 @@ export interface GoogleCSESearchResponse extends SearchResponse {
 
 export interface GoogleCSEDriverOptions extends DriverOptions {
   cx: string; // Custom Search Engine ID
+  cache?: CacheConfig;
 }
 
 // Helper function to get CSE token, version and fexp
@@ -117,13 +120,14 @@ const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
 
 export default function googleCSEDriver(
-  options: GoogleCSEDriverOptions,
+  driverOptions: GoogleCSEDriverOptions,
 ): Driver {
-  const { cx } = options;
+  const { cx } = driverOptions;
+  const cache = createCache(driverOptions.cache);
 
   return {
     name: "google-cse",
-    options,
+    options: driverOptions,
 
     search: async (
       searchOptions: GoogleCSESearchOptions,
@@ -132,6 +136,16 @@ export default function googleCSEDriver(
 
       if (!query.trim()) {
         return { results: [] };
+      }
+
+      const perPage = searchOptions.perPage || cache.perPage || 10;
+      const page = searchOptions.page || 1;
+      const cacheKey = `google-cse:${cx}:${query}:${page}:${perPage}`;
+
+      // Try cache first
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        return cached;
       }
 
       try {
@@ -144,12 +158,13 @@ export default function googleCSEDriver(
         // Build search URL
         const url = new URL("https://cse.google.com/cse/element/v1");
         url.searchParams.set("rsz", "filtered_cse");
-        url.searchParams.set("num", (searchOptions.perPage || 10).toString());
+        url.searchParams.set("num", perPage.toString());
         url.searchParams.set("hl", searchOptions.hl || "en");
         url.searchParams.set("source", "gcsc");
         url.searchParams.set("cx", cx);
         url.searchParams.set("q", query);
         url.searchParams.set("safe", searchOptions.safe || "active");
+        url.searchParams.set("start", ((page - 1) * perPage + 1).toString());
 
         // Optional Google CSE specific parameters
         if (searchOptions.cr) url.searchParams.set("cr", searchOptions.cr);
@@ -226,14 +241,19 @@ export default function googleCSEDriver(
         // Extract pagination info
         const currentPageIndex = cursor.currentPageIndex || 0;
 
-        return {
+        const result: GoogleCSESearchResponse = {
           results,
           totalResults,
           pagination: {
-            page: currentPageIndex + 1,
-            perPage: 10, // Google CSE typically returns 10 results per page
+            page: page,
+            perPage: perPage,
           },
         };
+
+        // Cache the result
+        await cache.set(cacheKey, result);
+
+        return result;
       } catch (error) {
         console.error("Google CSE search error:", error);
         return { results: [] };

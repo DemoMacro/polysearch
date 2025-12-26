@@ -5,15 +5,17 @@ import type {
   SearchOptions,
   SearchResponse,
   SearchResult,
+  CacheConfig,
 } from "..";
 
-// MetaDriver specific options
-export interface MetaDriverOptions extends DriverOptions {
+// HybridDriver specific options
+export interface HybridDriverOptions extends DriverOptions {
   drivers: Array<{
     driver: Driver;
     weight?: number; // Default 1.0
     timeout?: number; // Timeout in ms for this specific driver
   }>;
+  cache?: CacheConfig; // Note: Hybrid driver doesn't use cache directly, child drivers handle their own caching
 }
 
 // Weighted search result for internal processing
@@ -22,28 +24,99 @@ interface WeightedSearchResult {
   url: string;
   snippet?: string;
   weight: number;
+  sources: string[]; // Array of driver names that returned this result
+  rank: number; // Original rank in the driver's results (1-based)
 }
 
-// Helper function to deduplicate results by URL, keeping higher weighted results
+// Normalize URL for deduplication by handling trailing slashes, www prefix, and tracking parameters
+function normalizeUrl(url: string): string {
+  try {
+    let normalized = url.trim().toLowerCase();
+
+    // Remove www. prefix
+    if (normalized.startsWith("www.")) {
+      normalized = normalized.substring(4);
+    }
+
+    // Remove trailing slash
+    if (normalized.endsWith("/")) {
+      normalized = normalized.slice(0, -1);
+    }
+
+    // Remove common tracking parameters (UTM, Facebook Click ID, Google Click ID)
+    const urlObj = new URL(normalized);
+    const paramsToRemove = [
+      "utm_source",
+      "utm_medium",
+      "utm_campaign",
+      "utm_term",
+      "utm_content",
+      "fbclid",
+      "gclid",
+    ];
+    paramsToRemove.forEach((param) => urlObj.searchParams.delete(param));
+
+    return urlObj.toString();
+  } catch {
+    // If URL parsing fails, return trimmed lowercase version
+    return url.trim().toLowerCase();
+  }
+}
+
+// Deduplicate results by URL, merging sources and keeping higher weighted results
 function deduplicateResults(results: WeightedSearchResult[]): SearchResult[] {
   const urlMap = new Map<string, WeightedSearchResult>();
 
   for (const result of results) {
-    const existing = urlMap.get(result.url);
+    const normalizedUrl = normalizeUrl(result.url);
+    const existing = urlMap.get(normalizedUrl);
 
-    if (!existing || result.weight > existing.weight) {
-      urlMap.set(result.url, result);
+    if (!existing) {
+      // First time seeing this URL
+      urlMap.set(normalizedUrl, result);
+    } else {
+      // Merge sources from multiple drivers
+      existing.sources = [...new Set([...existing.sources, ...result.sources])];
+
+      // If new result has higher weight, take its content (title, snippet)
+      if (result.weight > existing.weight) {
+        existing.weight = result.weight;
+        existing.title = result.title;
+        existing.snippet = result.snippet;
+        existing.rank = result.rank; // Take the better rank from higher weighted driver
+      }
+      // If same weight but better rank, update rank
+      else if (
+        result.weight === existing.weight &&
+        result.rank < existing.rank
+      ) {
+        existing.rank = result.rank;
+      }
     }
   }
 
-  // Sort by weight (descending) and convert to SearchResult format
-  return Array.from(urlMap.values())
-    .sort((a, b) => b.weight - a.weight)
-    .map(({ title, url, snippet }) => ({
+  // Sort by weighted score: rank / weight (ascending), then by weight (descending)
+  const finalResults = Array.from(urlMap.values())
+    .sort((a, b) => {
+      // Calculate weighted score (lower is better)
+      const scoreA = a.rank / a.weight;
+      const scoreB = b.rank / b.weight;
+
+      if (scoreA !== scoreB) {
+        return scoreA - scoreB; // Lower score comes first
+      }
+
+      // If scores are equal, higher weight comes first
+      return b.weight - a.weight;
+    })
+    .map(({ title, url, snippet, sources }) => ({
       title,
       url,
       snippet,
+      sources,
     }));
+
+  return finalResults;
 }
 
 // Helper function to deduplicate suggestions
@@ -75,11 +148,11 @@ function withTimeout<T>(
   return Promise.race([promise, timeoutPromise]);
 }
 
-export default function metaDriver(options: MetaDriverOptions): Driver {
+export default function hybridDriver(options: HybridDriverOptions): Driver {
   const { drivers } = options;
 
   if (!drivers || drivers.length === 0) {
-    throw new Error("MetaDriver requires at least one driver");
+    throw new Error("HybridDriver requires at least one driver");
   }
 
   // Normalize driver configurations
@@ -92,7 +165,7 @@ export default function metaDriver(options: MetaDriverOptions): Driver {
   );
 
   return {
-    name: "meta",
+    name: "hybrid",
     options,
 
     search: async (searchOptions: SearchOptions): Promise<SearchResponse> => {
@@ -116,6 +189,7 @@ export default function metaDriver(options: MetaDriverOptions): Driver {
               : await searchPromise;
 
             return {
+              driverName: driver.name || "unknown",
               weight,
               results: result.results || [],
             };
@@ -130,20 +204,21 @@ export default function metaDriver(options: MetaDriverOptions): Driver {
 
         for (const promiseResult of driverResults) {
           if (promiseResult.status === "fulfilled") {
-            const { weight, results } = promiseResult.value;
+            const { driverName, weight, results } = promiseResult.value;
 
-            // Add weight information to each result
+            // Add weight, rank, and source information to each result
             const weightedResults: WeightedSearchResult[] = results.map(
-              (result) => ({
+              (result, index) => ({
                 ...result,
                 weight,
+                sources: [driverName],
+                rank: index + 1, // 1-based rank
               }),
             );
 
             successfulResults.push(...weightedResults);
           } else {
-            console.error("MetaDriver search error:", promiseResult.reason);
-            // Continue with other drivers even if one fails
+            // Driver failed, continue with other drivers
           }
         }
 
@@ -157,8 +232,7 @@ export default function metaDriver(options: MetaDriverOptions): Driver {
           results: finalResults,
           totalResults: successfulResults.length,
         };
-      } catch (error) {
-        console.error("MetaDriver search error:", error);
+      } catch {
         return { results: [] };
       }
     },
@@ -199,15 +273,12 @@ export default function metaDriver(options: MetaDriverOptions): Driver {
         for (const result of suggestionResults) {
           if (result.status === "fulfilled" && Array.isArray(result.value)) {
             allSuggestions.push(...result.value);
-          } else if (result.status === "rejected") {
-            console.error("MetaDriver suggest error:", result.reason);
-            // Continue with other drivers
           }
+          // Silently ignore failed suggestions
         }
 
         return deduplicateSuggestions(allSuggestions);
-      } catch (error) {
-        console.error("MetaDriver suggest error:", error);
+      } catch {
         return [];
       }
     },

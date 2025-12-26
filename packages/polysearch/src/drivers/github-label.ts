@@ -1,8 +1,16 @@
 import { ofetch } from "ofetch";
-import type { Driver, DriverOptions, SearchOptions, SearchResponse } from "..";
+import type {
+  Driver,
+  DriverOptions,
+  SearchOptions,
+  SearchResponse,
+  CacheConfig,
+} from "..";
+import { createCache } from "../cache";
 
 // GitHub Label Driver Options
 export interface GitHubLabelDriverOptions extends DriverOptions {
+  cache?: CacheConfig;
   token?: string; // GitHub Personal Access Token (required for label search)
 }
 
@@ -31,24 +39,19 @@ export interface GitHubLabelSearchResponse {
 }
 
 export default function githubLabelDriver(
-  options: GitHubLabelDriverOptions = {},
+  driverOptions: GitHubLabelDriverOptions = {},
 ): Driver {
-  const { token } = options;
+  const { token } = driverOptions;
+  const cache = createCache(driverOptions.cache);
 
   return {
     name: "github-label",
-    options,
+    options: driverOptions,
 
     search: async (
       searchOptions: GitHubLabelSearchOptions,
     ): Promise<SearchResponse> => {
-      const {
-        query,
-        limit = 30,
-        per_page,
-        page,
-        repository_id,
-      } = searchOptions;
+      const { query } = searchOptions;
 
       if (!query.trim()) {
         return { results: [] };
@@ -60,20 +63,34 @@ export default function githubLabelDriver(
         return { results: [] };
       }
 
+      const limit =
+        searchOptions.per_page || searchOptions.limit || cache.perPage || 30;
+      const page = searchOptions.page || 1;
+      const cacheKey = `github-label:${query}:${page}:${limit}`;
+
+      // Try cache first
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+
       try {
         // Build GitHub API query
         const searchParams = new URLSearchParams({
           q: query,
-          per_page: Math.min(per_page || limit, 100).toString(), // Use per_page if provided, else fallback to limit
+          per_page: Math.min(limit, 100).toString(),
         });
 
         // Add repository_id filter if provided
-        if (repository_id) {
-          searchParams.set("repository_id", repository_id.toString());
+        if (searchOptions.repository_id) {
+          searchParams.set(
+            "repository_id",
+            searchOptions.repository_id.toString(),
+          );
         }
 
         // Add page parameter if provided
-        if (page && page > 0) {
+        if (page && page > 1) {
           searchParams.set("page", page.toString());
         }
 
@@ -100,32 +117,24 @@ export default function githubLabelDriver(
           snippet: label.description || `Label color: ${label.color}`,
         }));
 
-        // Apply limit if needed (use per_page if provided, else fallback to limit)
-        const limitedResults = results.slice(0, per_page || limit);
+        // Apply limit if needed
+        const limitedResults = results.slice(0, limit);
 
-        return {
+        const result: SearchResponse = {
           results: limitedResults,
           totalResults: response.total_count,
           pagination: {
-            page: searchOptions.page || 1,
-            perPage: searchOptions.perPage || 30,
+            page: page,
+            perPage: limit,
           },
         };
+
+        // Cache the result
+        await cache.set(cacheKey, result);
+
+        return result;
       } catch (error) {
         console.error("GitHub Label Search Error:", error);
-
-        // Handle rate limit errors
-        if (error instanceof Error && error.message.includes("403")) {
-          console.error("GitHub API rate limit exceeded.");
-        }
-
-        // Handle authentication errors
-        if (error instanceof Error && error.message.includes("401")) {
-          console.error(
-            "GitHub Label Search requires valid authentication token.",
-          );
-        }
-
         return { results: [] };
       }
     },

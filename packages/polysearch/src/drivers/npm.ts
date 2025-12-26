@@ -5,7 +5,9 @@ import type {
   SuggestionOptions,
   SearchOptions,
   SearchResponse,
+  CacheConfig,
 } from "..";
+import { createCache } from "../cache";
 
 // NPM Registry API response types
 export interface NPMSearchPackage {
@@ -118,20 +120,24 @@ export interface NPMDriverOptions extends DriverOptions {
   quality?: number; // Weight for quality scoring (0-1)
   popularity?: number; // Weight for popularity scoring (0-1)
   maintenance?: number; // Weight for maintenance scoring (0-1)
+  cache?: CacheConfig;
 }
 
-export default function npmDriver(options: NPMDriverOptions = {}): Driver {
+export default function npmDriver(
+  driverOptions: NPMDriverOptions = {},
+): Driver {
   const { registry = "https://registry.npmjs.org", endpoint = "/-/v1/search" } =
-    options;
+    driverOptions;
 
   const searchEndpoint = `${registry}${endpoint}`;
-  const quality = options.quality;
-  const popularity = options.popularity;
-  const maintenance = options.maintenance;
+  const quality = driverOptions.quality;
+  const popularity = driverOptions.popularity;
+  const maintenance = driverOptions.maintenance;
+  const cache = createCache(driverOptions.cache);
 
   return {
     name: "npm",
-    options,
+    options: driverOptions,
 
     search: async (searchOptions: SearchOptions): Promise<SearchResponse> => {
       const { query } = searchOptions;
@@ -140,10 +146,18 @@ export default function npmDriver(options: NPMDriverOptions = {}): Driver {
         return { results: [] };
       }
 
+      const perPage = searchOptions.perPage || cache.perPage || 20;
+      const page = searchOptions.page || 1;
+      const cacheKey = `npm:${query}:${page}:${perPage}`;
+
+      // Try cache first
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+
       try {
         // Build search URL with parameters
-        const perPage = searchOptions.perPage || 20;
-        const page = searchOptions.page || 1;
         const from = (page - 1) * perPage; // Calculate offset
 
         const searchParams = new URLSearchParams({
@@ -171,22 +185,23 @@ export default function npmDriver(options: NPMDriverOptions = {}): Driver {
         });
 
         // Process search results
-        const processedResults = response.objects.map(
-          (item: NPMSearchObject) => ({
+        const result: SearchResponse = {
+          results: response.objects.map((item: NPMSearchObject) => ({
             title: item.package.name,
             url: item.package.links.npm,
             snippet: `${item.package.description}\n\nVersion: ${item.package.version}\nQuality: ${(item.score.detail.quality * 100).toFixed(1)}%\nPopularity: ${(item.score.detail.popularity * 100).toFixed(1)}%\nMaintenance: ${(item.score.detail.maintenance * 100).toFixed(1)}%`,
-          }),
-        );
-
-        return {
-          results: processedResults,
+          })),
           totalResults: response.total,
           pagination: {
             page: page,
             perPage: perPage,
           },
         };
+
+        // Cache the result
+        await cache.set(cacheKey, result);
+
+        return result;
       } catch (error) {
         console.error("NPM search error:", error);
         return { results: [] };

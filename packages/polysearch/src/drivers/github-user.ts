@@ -1,8 +1,16 @@
 import { ofetch } from "ofetch";
-import type { Driver, DriverOptions, SearchOptions, SearchResponse } from "..";
+import type {
+  Driver,
+  DriverOptions,
+  SearchOptions,
+  SearchResponse,
+  CacheConfig,
+} from "..";
+import { createCache } from "../cache";
 
 // GitHub User Driver Options
 export interface GitHubUserDriverOptions extends DriverOptions {
+  cache?: CacheConfig;
   token?: string; // GitHub Personal Access Token
 }
 
@@ -55,9 +63,10 @@ export interface GitHubUserSearchResponse {
 }
 
 export default function githubUserDriver(
-  options: GitHubUserDriverOptions = {},
+  driverOptions: GitHubUserDriverOptions = {},
 ): Driver {
-  const { token } = options;
+  const { token } = driverOptions;
+  const cache = createCache(driverOptions.cache);
 
   // Helper function to build query string with qualifiers
   function buildQuery(
@@ -99,15 +108,25 @@ export default function githubUserDriver(
 
   return {
     name: "github-user",
-    options,
+    options: driverOptions,
 
     search: async (
       searchOptions: GitHubUserSearchOptions,
     ): Promise<SearchResponse> => {
-      const { query, limit = 30, sort, order } = searchOptions;
+      const { query } = searchOptions;
 
       if (!query.trim()) {
         return { results: [] };
+      }
+
+      const limit = searchOptions.limit || cache.perPage || 30;
+      const page = searchOptions.page || 1;
+      const cacheKey = `github-user:${query}:${page}:${limit}`;
+
+      // Try cache first
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        return cached;
       }
 
       try {
@@ -115,15 +134,20 @@ export default function githubUserDriver(
         const apiQuery = buildQuery(query, searchOptions);
         const searchParams = new URLSearchParams({
           q: apiQuery,
-          per_page: Math.min(limit, 100).toString(), // GitHub API limit is 100
+          per_page: Math.min(limit, 100).toString(),
         });
 
         // Add sort parameters if provided
-        if (sort) {
-          searchParams.set("sort", sort);
-          if (order) {
-            searchParams.set("order", order);
+        if (searchOptions.sort) {
+          searchParams.set("sort", searchOptions.sort);
+          if (searchOptions.order) {
+            searchParams.set("order", searchOptions.order);
           }
+        }
+
+        // Add page parameter if provided
+        if (page && page > 1) {
+          searchParams.set("page", page.toString());
         }
 
         // Build headers
@@ -157,24 +181,21 @@ export default function githubUserDriver(
         // Apply limit if needed
         const limitedResults = results.slice(0, limit);
 
-        return {
+        const result: SearchResponse = {
           results: limitedResults,
           totalResults: response.total_count,
           pagination: {
-            page: searchOptions.page || 1,
-            perPage: searchOptions.perPage || 30,
+            page: page,
+            perPage: limit,
           },
         };
+
+        // Cache the result
+        await cache.set(cacheKey, result);
+
+        return result;
       } catch (error) {
         console.error("GitHub User Search Error:", error);
-
-        // Handle rate limit errors
-        if (error instanceof Error && error.message.includes("403")) {
-          console.error(
-            "GitHub API rate limit exceeded. Consider using a token.",
-          );
-        }
-
         return { results: [] };
       }
     },

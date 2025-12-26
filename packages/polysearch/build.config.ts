@@ -5,6 +5,7 @@ export default defineBuildConfig({
   entries: [
     "src/index",
     "src/server",
+    "src/cache",
     {
       input: "src/drivers/",
       outDir: "dist/drivers",

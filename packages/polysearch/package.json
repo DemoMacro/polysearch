@@ -60,6 +60,7 @@
   "homepage": "https://github.com/DemoMacro/polysearch#readme",
   "dependencies": {
     "h3": "2.0.1-rc.6",
-    "ofetch": "1.5.1"
+    "ofetch": "1.5.1",
+    "unstorage": "1.17.3"
   }
 }

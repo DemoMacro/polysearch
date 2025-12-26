@@ -3,11 +3,24 @@ export interface DriverOptions {
   [key: string]: any;
 }
 
+// Cache options
+export interface CacheOptions {
+  storage?: import("unstorage").Storage; // Storage instance (optional, defaults to LRU Cache)
+  perPage?: number; // Default results per page
+  ttl?: number; // Cache expiration time in seconds
+  maxItems?: number; // Maximum items in LRU cache (default: 100)
+  [key: string]: any; // Additional cache configuration
+}
+
+// Cache configuration (can be options or false to disable)
+export type CacheConfig = CacheOptions | false;
+
 // Search result item
 export interface SearchResult {
   title: string;
   url: string;
   snippet?: string;
+  sources?: string[]; // Array of driver names that returned this result
 }
 
 // Search response with metadata
@@ -25,6 +38,7 @@ export interface SearchOptions {
   query: string;
   page?: number;
   perPage?: number;
+  cache?: CacheConfig; // Optional: cache config or false to disable, modifying this creates a new cache
   [key: string]: any;
 }
 
@@ -52,4 +66,5 @@ export interface Driver<OptionsT = DriverOptions> {
 // Search Manager configuration
 export interface PolySearchOptions {
   driver: Driver;
+  cache?: CacheConfig;
 }

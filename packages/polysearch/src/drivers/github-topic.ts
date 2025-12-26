@@ -1,8 +1,16 @@
 import { ofetch } from "ofetch";
-import type { Driver, DriverOptions, SearchOptions, SearchResponse } from "..";
+import type {
+  Driver,
+  DriverOptions,
+  SearchOptions,
+  SearchResponse,
+  CacheConfig,
+} from "..";
+import { createCache } from "../cache";
 
 // GitHub Topic Driver Options
 export interface GitHubTopicDriverOptions extends DriverOptions {
+  cache?: CacheConfig;
   token?: string; // GitHub Personal Access Token
 }
 
@@ -32,32 +40,44 @@ export interface GitHubTopicSearchResponse {
 }
 
 export default function githubTopicDriver(
-  options: GitHubTopicDriverOptions = {},
+  driverOptions: GitHubTopicDriverOptions = {},
 ): Driver {
-  const { token } = options;
+  const { token } = driverOptions;
+  const cache = createCache(driverOptions.cache);
 
   return {
     name: "github-topic",
-    options,
+    options: driverOptions,
 
     search: async (
       searchOptions: GitHubTopicSearchOptions,
     ): Promise<SearchResponse> => {
-      const { query, limit = 30, per_page, page } = searchOptions;
+      const { query } = searchOptions;
 
       if (!query.trim()) {
         return { results: [] };
+      }
+
+      const limit =
+        searchOptions.per_page || searchOptions.limit || cache.perPage || 30;
+      const page = searchOptions.page || 1;
+      const cacheKey = `github-topic:${query}:${page}:${limit}`;
+
+      // Try cache first
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        return cached;
       }
 
       try {
         // Build GitHub API query
         const searchParams = new URLSearchParams({
           q: query,
-          per_page: Math.min(per_page || limit, 100).toString(), // Use per_page if provided, else fallback to limit
+          per_page: Math.min(limit, 100).toString(),
         });
 
         // Add page parameter if provided
-        if (page && page > 0) {
+        if (page && page > 1) {
           searchParams.set("page", page.toString());
         }
 
@@ -90,85 +110,29 @@ export default function githubTopicDriver(
             `Featured topic: ${topic.display_name}`,
         }));
 
-        // Apply limit if needed (use per_page if provided, else fallback to limit)
-        const limitedResults = results.slice(0, per_page || limit);
+        // Apply limit if needed
+        const limitedResults = results.slice(0, limit);
 
-        return {
+        const result: SearchResponse = {
           results: limitedResults,
           totalResults: response.total_count,
           pagination: {
-            page: searchOptions.page || 1,
-            perPage: searchOptions.perPage || 30,
+            page: page,
+            perPage: limit,
           },
         };
+
+        // Cache the result
+        await cache.set(cacheKey, result);
+
+        return result;
       } catch (error) {
         console.error("GitHub Topic Search Error:", error);
-
-        // Handle rate limit errors
-        if (error instanceof Error && error.message.includes("403")) {
-          console.error(
-            "GitHub API rate limit exceeded. Consider using a token.",
-          );
-        }
-
         return { results: [] };
       }
     },
 
-    // Basic suggestion support for common topics
-    suggest: async (suggestOptions: { query: string }): Promise<string[]> => {
-      const { query } = suggestOptions;
-
-      if (!query.trim()) {
-        return [];
-      }
-
-      // Return common topics that match the query
-      const commonTopics = [
-        "react",
-        "javascript",
-        "typescript",
-        "nodejs",
-        "python",
-        "machine-learning",
-        "ai",
-        "vue",
-        "angular",
-        "docker",
-        "kubernetes",
-        "aws",
-        "go",
-        "rust",
-        "swift",
-        "java",
-        "php",
-        "laravel",
-        "ruby",
-        "rails",
-        "flutter",
-        "android",
-        "ios",
-        "swift",
-        "kotlin",
-        "blockchain",
-        "web3",
-        "css",
-        "html",
-        "frontend",
-        "backend",
-        "devops",
-        "testing",
-        "api",
-        "rest",
-        "graphql",
-        "database",
-        "sql",
-        "nosql",
-      ];
-
-      return commonTopics
-        .filter((topic) => topic.toLowerCase().includes(query.toLowerCase()))
-        .slice(0, 5);
-    },
+    // GitHub topic search doesn't support suggestions
+    suggest: async (): Promise<string[]> => [],
   };
 }

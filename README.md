@@ -93,13 +93,13 @@ console.log(`Total available: ${npmResults.totalResults}`);
 
 ```typescript
 import { createPolySearch } from "polysearch";
-import metaDriver from "polysearch/drivers/meta";
+import hybridDriver from "polysearch/drivers/hybrid";
 import googleCSEDriver from "polysearch/drivers/google-cse";
 import duckduckgoDriver from "polysearch/drivers/duckduckgo";
 
-// Create meta driver combining multiple engines
+// Create hybrid driver combining multiple engines
 const search = createPolySearch({
-  driver: metaDriver({
+  driver: hybridDriver({
     drivers: [
       { driver: duckduckgoDriver(), weight: 0.7 },
       {
@@ -136,14 +136,14 @@ console.log("Suggestions:", suggestions);
 
 ## Available Drivers
 
-### Meta Driver
+### Hybrid Driver
 
 ```typescript
-import metaDriver from "polysearch/drivers/meta";
+import hybridDriver from "polysearch/drivers/hybrid";
 import duckduckgoDriver from "polysearch/drivers/duckduckgo";
 import googleCSEDriver from "polysearch/drivers/google-cse";
 
-const driver = metaDriver({
+const driver = hybridDriver({
   drivers: [
     { driver: duckduckgoDriver(), weight: 0.6 },
     {
@@ -158,6 +158,7 @@ const driver = metaDriver({
 // - Combines multiple search engines with weighted results
 // - Parallel execution with configurable timeouts
 // - Automatic result deduplication by URL
+// - Source tracking: each result shows which drivers returned it
 // - Fault-tolerant: continues even if some drivers fail
 // - Configurable driver weights and timeouts
 ```
@@ -291,6 +292,7 @@ interface SearchResult {
   title: string; // Result title
   url: string; // Result URL
   snippet?: string; // Result description or snippet
+  sources?: string[]; // Array of driver names that returned this result
 }
 ```
 

@@ -7,7 +7,7 @@
     "dev": "pnpm -r dev",
     "build": "pnpm -r build",
     "lint": "basis lint --all",
-    "postinstall": "pnpm dev && basis git setup"
+    "postinstall": "basis git setup"
   },
   "repository": {
     "type": "git",
