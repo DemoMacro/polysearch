@@ -51,8 +51,8 @@ async function testSearch() {
   try {
     console.log("\n\n=== Testing Hybrid Driver Search ===");
 
-    console.log("\nTesting search with 'typescript'...");
-    const results = await search.search({ query: "typescript", perPage: 5 });
+    console.log("\nTesting search with 'GitHub'...");
+    const results = await search.search({ query: "GitHub", perPage: 5 });
     console.log("Search results:", results);
     console.log("Results count:", results.results.length);
 
@@ -79,9 +79,9 @@ async function testSearch() {
       console.log(`   URL: ${result.url}`);
     });
 
-    console.log("\n\nTesting search with 'github api'...");
-    const results2 = await search.search({ query: "github api", perPage: 3 });
-    console.log("\nSearch results for 'github api':", results2);
+    console.log("\n\nTesting search with 'TypeScript'...");
+    const results2 = await search.search({ query: "TypeScript", perPage: 3 });
+    console.log("\nSearch results for 'TypeScript':", results2);
     console.log("Results count:", results2.results.length);
 
     // Show sources for second search

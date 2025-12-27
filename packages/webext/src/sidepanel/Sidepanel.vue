@@ -83,7 +83,7 @@ function clearHistory() {
   searchHistory.value = [];
 }
 
-// Get search suggestions
+// Get search suggestions (async, non-blocking)
 let suggestTimer: ReturnType<typeof setTimeout> | null = null;
 async function updateSuggestions() {
   if (!searchTerm.value.trim()) {
@@ -91,10 +91,18 @@ async function updateSuggestions() {
     return;
   }
   if (suggestTimer) clearTimeout(suggestTimer);
+
+  // Immediately set current input as the only suggestion
+  suggestions.value = [searchTerm.value];
+
+  // Then fetch additional suggestions in background
   suggestTimer = setTimeout(async () => {
     const results = await suggest(searchTerm.value);
-    // Add current input as first option
-    suggestions.value = [searchTerm.value, ...results];
+    // Merge with current input, removing duplicates
+    const uniqueSuggestions = Array.from(
+      new Set([searchTerm.value, ...results]),
+    );
+    suggestions.value = uniqueSuggestions;
   }, 300);
 }
 

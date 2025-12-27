@@ -3,7 +3,7 @@
   "displayName": "PolySearch",
   "version": "0.0.0",
   "private": true,
-  "description": "",
+  "description": "Browser extension for unified web search across multiple engines",
   "scripts": {
     "dev": "pnpm clear && cross-env NODE_ENV=development pnpm run /dev:.*/",
     "dev-firefox": "pnpm clear && cross-env NODE_ENV=development EXTENSION=firefox pnpm run /dev:.*/",

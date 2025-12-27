@@ -5,15 +5,17 @@
 ![npm license](https://img.shields.io/npm/l/polysearch)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](https://www.contributor-covenant.org/version/2/1/code_of_conduct)
 
-> Universal search engine driver library with TypeScript support for multiple search providers
+> Unified search interface supporting multiple search engines with intelligent result merging and weighted ranking
 
 ## Features
 
-- 🌐 **Multi-Driver Support**: Google CSE, DuckDuckGo, NPM Registry with unified API
+- 🌐 **Multi-Engine Support**: Google CSE, DuckDuckGo, NPM Registry with unified API
+- 🔄 **Smart Result Merging**: Automatic deduplication and source tracking across engines
+- ⚖️ **Weighted Ranking**: Configure engine priorities for customized result ordering
 - 📝 **TypeScript First**: Full type safety with comprehensive search result types
-- 🔧 **Flexible Operations**: Support for search, suggestions, and pagination where providers allow
-- 🚀 **High Performance**: Built on modern web APIs with minimal dependencies
-- 💾 **Built-in Caching**: Optional LRU cache support for improved performance and reduced API calls
+- 🔧 **Flexible Operations**: Support for search, suggestions, and pagination
+- 🚀 **High Performance**: Parallel execution with configurable timeouts
+- 💾 **Built-in Caching**: Optional LRU cache support for improved performance
 
 ## Installation
 

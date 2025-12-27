@@ -5,6 +5,7 @@ import type {
   SearchOptions,
   SearchResponse,
   CacheConfig,
+  SearchResult,
 } from "..";
 import { createCache } from "../cache";
 
@@ -255,8 +256,18 @@ export default function hybridDriver(options: HybridDriverOptions): Driver {
         0,
       );
 
+      // Convert WeightedSearchResult to SearchResult, preserving sources
+      const results: SearchResult[] = paginatedResults.map(
+        ({ title, url, snippet, sources }) => ({
+          title,
+          url,
+          snippet,
+          sources,
+        }),
+      );
+
       return {
-        results: paginatedResults,
+        results,
         totalResults:
           estimatedTotalResults > 0 ? estimatedTotalResults : allResults.length,
         pagination: { page, perPage },

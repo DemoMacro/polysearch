@@ -33,8 +33,8 @@ async function testSuggestions() {
 async function testSearch() {
   try {
     console.log("\n\n=== Testing DuckDuckGo Search ===");
-    console.log("Testing search with 'github'...");
-    const results = await search.search({ query: "github", limit: 5 });
+    console.log("Testing search with 'GitHub'...");
+    const results = await search.search({ query: "GitHub", limit: 5 });
     console.log("Search results:", results);
     console.log("Results count:", results.results.length);
 
@@ -48,9 +48,9 @@ async function testSearch() {
       console.log("Total results: Not provided by DuckDuckGo API");
     }
 
-    console.log("\nTesting search with 'typescript'...");
-    const results2 = await search.search({ query: "typescript", limit: 3 });
-    console.log("Search results for 'typescript':", results2);
+    console.log("\nTesting search with 'TypeScript'...");
+    const results2 = await search.search({ query: "TypeScript", limit: 3 });
+    console.log("Search results for 'TypeScript':", results2);
     console.log("Results count:", results2.results.length);
   } catch (error) {
     console.error("Search test failed:", error);
