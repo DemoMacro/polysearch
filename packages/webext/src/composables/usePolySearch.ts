@@ -8,18 +8,8 @@ import {
 
 /**
  * PolySearch Composable
- * Provides search functionality with caching
+ * Simple wrapper around polysearch library
  */
-
-// Result cache interface
-interface CachedSearch {
-  query: string;
-  page: number;
-  perPage: number;
-  timestamp: number;
-  response: SearchResponse;
-}
-
 export function usePolySearch() {
   // Search state
   const isSearching = ref(false);
@@ -35,9 +25,6 @@ export function usePolySearch() {
   const currentQuery = ref("");
   const currentPage = ref(1);
   const perPage = ref(10);
-
-  // Search result cache
-  const searchCache = ref<Map<string, CachedSearch>>(new Map());
 
   // Search manager (lazy loaded)
   let searchManager: ReturnType<typeof createSearchManager> | null = null;
@@ -90,18 +77,7 @@ export function usePolySearch() {
   }
 
   /**
-   * Generate cache key
-   */
-  function getCacheKey(
-    query: string,
-    page: number,
-    perPageNum: number,
-  ): string {
-    return `${query}-${page}-${perPageNum}`;
-  }
-
-  /**
-   * Execute search (with caching)
+   * Execute search
    */
   async function search(query: string, options?: Partial<SearchOptions>) {
     if (!query.trim()) {
@@ -110,29 +86,15 @@ export function usePolySearch() {
 
     const page = options?.page || currentPage.value;
     const perPageNum = options?.perPage || perPage.value;
-    const cacheKey = getCacheKey(query, page, perPageNum);
 
-    // Clear old cache if this is a new query
-    if (query !== currentQuery.value) {
-      searchCache.value.clear();
-    }
-
-    // Check cache
-    const cached = searchCache.value.get(cacheKey);
-    if (cached) {
-      searchResults.value = cached.response.results;
-      totalResults.value = cached.response.totalResults;
-      pagination.value = cached.response.pagination;
-      currentQuery.value = query;
-      currentPage.value = page;
-      return;
-    }
-
-    // Cache miss, execute search
-    isSearching.value = true;
-    error.value = null;
+    // Update current params
     currentQuery.value = query;
     currentPage.value = page;
+    perPage.value = perPageNum;
+
+    // Execute search
+    isSearching.value = true;
+    error.value = null;
 
     try {
       const manager = getSearchManager();
@@ -146,15 +108,6 @@ export function usePolySearch() {
       searchResults.value = response.results;
       totalResults.value = response.totalResults;
       pagination.value = response.pagination;
-
-      // Store in cache
-      searchCache.value.set(cacheKey, {
-        query,
-        page,
-        perPage: perPageNum,
-        timestamp: Date.now(),
-        response,
-      });
     } catch (err) {
       error.value = err instanceof Error ? err.message : "Search failed";
       searchResults.value = [];
@@ -185,37 +138,21 @@ export function usePolySearch() {
   }
 
   /**
-   * Next page
-   */
-  async function nextPage() {
-    if (!pagination.value) {
-      return;
-    }
-
-    const newPage = (currentPage.value || 1) + 1;
-    currentPage.value = newPage;
-    await search(currentQuery.value, { page: newPage });
-  }
-
-  /**
-   * Previous page
-   */
-  async function prevPage() {
-    if (!pagination.value || (currentPage.value || 1) <= 1) {
-      return;
-    }
-
-    const newPage = (currentPage.value || 1) - 1;
-    currentPage.value = newPage;
-    await search(currentQuery.value, { page: newPage });
-  }
-
-  /**
    * Go to specific page
    */
   async function goToPage(page: number) {
-    currentPage.value = page;
-    await search(currentQuery.value, { page });
+    // Calculate max page based on total results
+    if (totalResults.value && perPage.value) {
+      const maxPage = Math.ceil(totalResults.value / perPage.value);
+      if (page > maxPage) {
+        page = Math.max(1, maxPage);
+      }
+    }
+
+    await search(currentQuery.value, {
+      page,
+      perPage: perPage.value,
+    });
   }
 
   /**
@@ -227,8 +164,6 @@ export function usePolySearch() {
     pagination.value = undefined;
     currentQuery.value = "";
     error.value = null;
-    // Clear cache
-    searchCache.value.clear();
   }
 
   /**
@@ -242,8 +177,8 @@ export function usePolySearch() {
   const hasResults = computed(() => searchResults.value.length > 0);
   const hasNextPage = computed(() => {
     if (!totalResults.value || !pagination.value) return false;
-    const { page = 1, perPage = 10 } = pagination.value;
-    return page * perPage < totalResults.value;
+    const { page = 1, perPage: perPageNum = 10 } = pagination.value;
+    return page * perPageNum < totalResults.value;
   });
   const hasPrevPage = computed(() => {
     const page = currentPage.value || 1;
@@ -273,8 +208,6 @@ export function usePolySearch() {
     // Methods
     search,
     suggest,
-    nextPage,
-    prevPage,
     goToPage,
     clearResults,
     updateConfig,

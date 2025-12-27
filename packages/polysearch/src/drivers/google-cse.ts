@@ -216,8 +216,6 @@ export default function googleCSEDriver(
           ),
         );
         if (!jsonpMatch) {
-          console.log("Response text:", responseText);
-          console.log("Callback name:", callbackName);
           return { results: [] };
         }
 

@@ -7,15 +7,10 @@ const {
   isSearching,
   searchResults,
   totalResults,
-  pagination,
   error,
   search,
   suggest,
-  prevPage,
-  nextPage,
   goToPage,
-  hasPrevPage,
-  hasNextPage,
   currentPage,
   loadConfig,
 } = usePolySearch();
@@ -58,7 +53,6 @@ async function handleSearch(value?: string) {
   const query = value || searchTerm.value;
   if (!query?.trim()) return;
 
-  console.log("Search started:", query, "per page:", currentPerPage.value);
   searchQuery.value = query;
 
   // Add to history
@@ -76,8 +70,6 @@ async function handleSearch(value?: string) {
     page: 1,
     perPage: currentPerPage.value,
   });
-
-  console.log("Search completed, result count:", searchResults.value.length);
 }
 
 // Search from history
@@ -100,11 +92,9 @@ async function updateSuggestions() {
   }
   if (suggestTimer) clearTimeout(suggestTimer);
   suggestTimer = setTimeout(async () => {
-    console.log("Getting suggestions:", searchTerm.value);
     const results = await suggest(searchTerm.value);
     // Add current input as first option
     suggestions.value = [searchTerm.value, ...results];
-    console.log("Suggestions:", suggestions.value);
   }, 300);
 }
 
@@ -129,14 +119,22 @@ const totalPages = computed(() => {
   return Math.ceil(totalResults.value / currentPerPage.value);
 });
 
+// Get page range for pagination buttons
+
 // Watch per page results change
+let perPageChangeTimer: ReturnType<typeof setTimeout> | null = null;
 watch(currentPerPage, async (newVal) => {
+  if (perPageChangeTimer) clearTimeout(perPageChangeTimer);
+
   if (searchQuery.value.trim()) {
-    console.log("Per page results changed, re-searching:", newVal);
-    await search(searchQuery.value, {
-      page: 1,
-      perPage: newVal,
-    });
+    // Debounce perPage changes to avoid excessive searches
+    perPageChangeTimer = setTimeout(async () => {
+      currentPage.value = 1; // Reset to first page
+      await search(searchQuery.value, {
+        page: 1,
+        perPage: newVal,
+      });
+    }, 300);
   }
 });
 
@@ -202,12 +200,9 @@ onMounted(async () => {
               <div v-if="searchResults.length > 0">
                 <!-- Result stats -->
                 <div class="flex items-center justify-between mb-4">
-                  <div class="flex items-center gap-2">
-                    <p class="text-sm font-semibold">Search results</p>
-                    <UChip size="xs" variant="subtle"
-                      >{{ searchResults.length }} results</UChip
-                    >
-                    <span v-if="totalResults" class="text-xs text-gray-500">
+                  <div class="flex items-center gap-2 text-gray-500">
+                    <span>{{ searchResults.length }} results</span>
+                    <span v-if="totalResults">
                       / total {{ totalResults }} results
                     </span>
                   </div>
@@ -280,35 +275,14 @@ onMounted(async () => {
                 <!-- Pagination -->
                 <div
                   v-if="totalPages > 1"
-                  class="flex items-center justify-center gap-2 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700"
+                  class="flex items-center justify-center mt-6 pt-6 border-t border-gray-200 dark:border-gray-700"
                 >
-                  <UButton
-                    icon="i-heroicons-chevron-left"
-                    variant="ghost"
-                    :disabled="!hasPrevPage"
-                    size="sm"
-                    @click="prevPage"
-                  />
-
-                  <div class="flex items-center gap-1">
-                    <UButton
-                      v-for="page in Math.min(totalPages, 5)"
-                      :key="page"
-                      :variant="page === currentPage ? 'solid' : 'ghost'"
-                      :color="page === currentPage ? 'primary' : 'neutral'"
-                      size="sm"
-                      @click="goToPage(page)"
-                    >
-                      {{ page }}
-                    </UButton>
-                  </div>
-
-                  <UButton
-                    icon="i-heroicons-chevron-right"
-                    variant="ghost"
-                    :disabled="!hasNextPage"
-                    size="sm"
-                    @click="nextPage"
+                  <UPagination
+                    v-model:page="currentPage"
+                    :total="totalResults || 0"
+                    :items-per-page="currentPerPage"
+                    :sibling-count="1"
+                    @update:page="goToPage"
                   />
                 </div>
               </div>

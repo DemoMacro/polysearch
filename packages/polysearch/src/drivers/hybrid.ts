@@ -4,9 +4,9 @@ import type {
   SuggestionOptions,
   SearchOptions,
   SearchResponse,
-  SearchResult,
   CacheConfig,
 } from "..";
+import { createCache } from "../cache";
 
 // HybridDriver specific options
 export interface HybridDriverOptions extends DriverOptions {
@@ -15,7 +15,7 @@ export interface HybridDriverOptions extends DriverOptions {
     weight?: number; // Default 1.0
     timeout?: number; // Timeout in ms for this specific driver
   }>;
-  cache?: CacheConfig; // Note: Hybrid driver doesn't use cache directly, child drivers handle their own caching
+  cache?: CacheConfig;
 }
 
 // Weighted search result for internal processing
@@ -64,7 +64,9 @@ function normalizeUrl(url: string): string {
 }
 
 // Deduplicate results by URL, merging sources and keeping higher weighted results
-function deduplicateResults(results: WeightedSearchResult[]): SearchResult[] {
+function deduplicateResults(
+  results: WeightedSearchResult[],
+): WeightedSearchResult[] {
   const urlMap = new Map<string, WeightedSearchResult>();
 
   for (const result of results) {
@@ -96,25 +98,18 @@ function deduplicateResults(results: WeightedSearchResult[]): SearchResult[] {
   }
 
   // Sort by weighted score: rank / weight (ascending), then by weight (descending)
-  const finalResults = Array.from(urlMap.values())
-    .sort((a, b) => {
-      // Calculate weighted score (lower is better)
-      const scoreA = a.rank / a.weight;
-      const scoreB = b.rank / b.weight;
+  const finalResults = Array.from(urlMap.values()).sort((a, b) => {
+    // Calculate weighted score (lower is better)
+    const scoreA = a.rank / a.weight;
+    const scoreB = b.rank / b.weight;
 
-      if (scoreA !== scoreB) {
-        return scoreA - scoreB; // Lower score comes first
-      }
+    if (scoreA !== scoreB) {
+      return scoreA - scoreB; // Lower score comes first
+    }
 
-      // If scores are equal, higher weight comes first
-      return b.weight - a.weight;
-    })
-    .map(({ title, url, snippet, sources }) => ({
-      title,
-      url,
-      snippet,
-      sources,
-    }));
+    // If scores are equal, higher weight comes first
+    return b.weight - a.weight;
+  });
 
   return finalResults;
 }
@@ -149,11 +144,13 @@ function withTimeout<T>(
 }
 
 export default function hybridDriver(options: HybridDriverOptions): Driver {
-  const { drivers } = options;
+  const { drivers, cache: cacheConfig } = options;
 
   if (!drivers || drivers.length === 0) {
     throw new Error("HybridDriver requires at least one driver");
   }
+
+  const cache = createCache(cacheConfig);
 
   // Normalize driver configurations
   const normalizedDrivers = drivers.map(
@@ -169,17 +166,29 @@ export default function hybridDriver(options: HybridDriverOptions): Driver {
     options,
 
     search: async (searchOptions: SearchOptions): Promise<SearchResponse> => {
-      const { query } = searchOptions;
+      const { query, page = 1, perPage = 10 } = searchOptions;
 
       if (!query.trim()) {
         return { results: [] };
       }
 
-      try {
-        // Execute all drivers in parallel with optional timeouts
+      // Dynamically fetch results from all drivers
+      const targetCount = page * perPage;
+      let driverPage = 1;
+      const maxPages = 5; // Safety limit
+
+      let allResults: WeightedSearchResult[] = [];
+
+      // Collect totals from all drivers (only once per driver)
+      const driverTotals = new Map<string, number>();
+
+      while (allResults.length < targetCount && driverPage <= maxPages) {
+        // Fetch current page from all drivers
         const driverPromises = normalizedDrivers.map(
           async ({ driver, weight, timeout }) => {
-            const searchPromise = Promise.resolve(driver.search(searchOptions));
+            const searchPromise = Promise.resolve(
+              driver.search({ query, page: driverPage, perPage }),
+            );
             const result = timeout
               ? await withTimeout(
                   searchPromise,
@@ -188,53 +197,70 @@ export default function hybridDriver(options: HybridDriverOptions): Driver {
                 )
               : await searchPromise;
 
+            // Collect total from this driver (only first time we see it)
+            const driverName = driver.name || "unknown";
+            if (!driverTotals.has(driverName)) {
+              const driverTotal = result.totalResults;
+              if (driverTotal !== undefined && driverTotal > 0) {
+                driverTotals.set(driverName, driverTotal);
+              }
+            }
+
             return {
-              driverName: driver.name || "unknown",
+              driverName,
               weight,
               results: result.results || [],
             };
           },
         );
 
-        // Wait for all drivers to complete
         const driverResults = await Promise.allSettled(driverPromises);
 
-        // Process successful results
-        const successfulResults: WeightedSearchResult[] = [];
-
+        // Process results from this page
         for (const promiseResult of driverResults) {
           if (promiseResult.status === "fulfilled") {
             const { driverName, weight, results } = promiseResult.value;
 
-            // Add weight, rank, and source information to each result
             const weightedResults: WeightedSearchResult[] = results.map(
               (result, index) => ({
                 ...result,
                 weight,
                 sources: [driverName],
-                rank: index + 1, // 1-based rank
+                rank: (driverPage - 1) * perPage + index + 1,
               }),
             );
 
-            successfulResults.push(...weightedResults);
-          } else {
-            // Driver failed, continue with other drivers
+            allResults.push(...weightedResults);
           }
         }
 
-        // Apply limit if specified
-        let finalResults = deduplicateResults(successfulResults);
-        if (searchOptions.perPage && searchOptions.perPage > 0) {
-          finalResults = finalResults.slice(0, searchOptions.perPage);
+        // Deduplicate after each page
+        allResults = deduplicateResults(allResults);
+
+        // Stop if we have enough results
+        if (allResults.length >= targetCount) {
+          break;
         }
 
-        return {
-          results: finalResults,
-          totalResults: successfulResults.length,
-        };
-      } catch {
-        return { results: [] };
+        driverPage++;
       }
+
+      // Paginate from all results
+      const offset = (page - 1) * perPage;
+      const paginatedResults = allResults.slice(offset, offset + perPage);
+
+      // Calculate total results (sum of all driver totals)
+      const estimatedTotalResults = Array.from(driverTotals.values()).reduce(
+        (sum, total) => sum + total,
+        0,
+      );
+
+      return {
+        results: paginatedResults,
+        totalResults:
+          estimatedTotalResults > 0 ? estimatedTotalResults : allResults.length,
+        pagination: { page, perPage },
+      };
     },
 
     suggest: async (suggestOptions: SuggestionOptions): Promise<string[]> => {
