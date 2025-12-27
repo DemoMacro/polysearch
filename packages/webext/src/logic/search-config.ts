@@ -9,20 +9,28 @@ export interface SearchEngineConfig {
   googleCSE: {
     enabled: boolean;
     cx: string; // Google Custom Search Engine ID
+    weight?: number; // Weight for result ranking (default: 1.0)
+    timeout?: number; // Request timeout in ms (default: 5000)
   };
   duckduckgo: {
     enabled: boolean;
+    weight?: number; // Weight for result ranking (default: 0.5)
+    timeout?: number; // Request timeout in ms (default: 5000)
   };
 }
 
 // Default configuration
 export const defaultSearchConfig: SearchEngineConfig = {
   googleCSE: {
-    enabled: false,
-    cx: "",
+    enabled: Boolean(import.meta.env.GOOGLE_CSE_CX),
+    cx: import.meta.env.GOOGLE_CSE_CX || "",
+    weight: 1.0,
+    timeout: 5000,
   },
   duckduckgo: {
     enabled: true,
+    weight: 0.5,
+    timeout: 5000,
   },
 };
 
@@ -44,8 +52,8 @@ export function createHybridDriver(config: SearchEngineConfig): Driver {
       driver: googleCSEDriver({
         cx: config.googleCSE.cx,
       }),
-      weight: 1.0,
-      timeout: 5000,
+      weight: config.googleCSE.weight ?? 1.0,
+      timeout: config.googleCSE.timeout ?? 5000,
     });
   }
 
@@ -53,7 +61,8 @@ export function createHybridDriver(config: SearchEngineConfig): Driver {
   if (config.duckduckgo.enabled) {
     drivers.push({
       driver: duckduckgoDriver(),
-      weight: 0.5,
+      weight: config.duckduckgo.weight ?? 0.5,
+      timeout: config.duckduckgo.timeout ?? 5000,
     });
   }
 

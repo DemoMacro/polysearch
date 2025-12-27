@@ -8,9 +8,13 @@ const localConfig = ref({
   googleCSE: {
     enabled: false,
     cx: "",
+    weight: 1.0,
+    timeout: 5000,
   },
   duckduckgo: {
     enabled: true,
+    weight: 0.5,
+    timeout: 5000,
   },
 });
 
@@ -23,7 +27,7 @@ async function saveConfig() {
 
   try {
     await updateConfig(localConfig.value);
-    saveMessage.value = "Configuration saved！";
+    saveMessage.value = "Configuration saved!";
     setTimeout(() => {
       saveMessage.value = "";
     }, 2000);
@@ -40,9 +44,13 @@ function resetConfig() {
     googleCSE: {
       enabled: false,
       cx: "",
+      weight: 1.0,
+      timeout: 5000,
     },
     duckduckgo: {
       enabled: true,
+      weight: 0.5,
+      timeout: 5000,
     },
   };
 }
@@ -53,9 +61,13 @@ onMounted(async () => {
     googleCSE: {
       enabled: searchConfig.value.googleCSE.enabled,
       cx: searchConfig.value.googleCSE.cx,
+      weight: searchConfig.value.googleCSE.weight || 1.0,
+      timeout: searchConfig.value.googleCSE.timeout || 5000,
     },
     duckduckgo: {
       enabled: searchConfig.value.duckduckgo.enabled,
+      weight: searchConfig.value.duckduckgo.weight || 0.5,
+      timeout: searchConfig.value.duckduckgo.timeout || 5000,
     },
   };
 });
@@ -115,6 +127,38 @@ onMounted(async () => {
             </template>
           </UFormField>
 
+          <UFormField
+            v-if="localConfig.googleCSE.enabled"
+            label="Weight"
+            description="Higher weight = higher priority in results (0.1 - 10.0)"
+            class="flex items-center justify-between py-4 gap-4"
+          >
+            <UInput
+              v-model.number="localConfig.googleCSE.weight"
+              type="number"
+              step="0.1"
+              min="0.1"
+              max="10.0"
+              class="w-32"
+            />
+          </UFormField>
+
+          <UFormField
+            v-if="localConfig.googleCSE.enabled"
+            label="Timeout (ms)"
+            description="Request timeout in milliseconds (1000 - 30000)"
+            class="flex items-center justify-between py-4 gap-4"
+          >
+            <UInput
+              v-model.number="localConfig.googleCSE.timeout"
+              type="number"
+              step="1000"
+              min="1000"
+              max="30000"
+              class="w-32"
+            />
+          </UFormField>
+
           <!-- DuckDuckGo -->
           <UFormField
             label="DuckDuckGo"
@@ -122,6 +166,38 @@ onMounted(async () => {
             class="flex items-center justify-between py-4 gap-2"
           >
             <USwitch v-model="localConfig.duckduckgo.enabled" />
+          </UFormField>
+
+          <UFormField
+            v-if="localConfig.duckduckgo.enabled"
+            label="Weight"
+            description="Higher weight = higher priority in results (0.1 - 10.0)"
+            class="flex items-center justify-between py-4 gap-4"
+          >
+            <UInput
+              v-model.number="localConfig.duckduckgo.weight"
+              type="number"
+              step="0.1"
+              min="0.1"
+              max="10.0"
+              class="w-32"
+            />
+          </UFormField>
+
+          <UFormField
+            v-if="localConfig.duckduckgo.enabled"
+            label="Timeout (ms)"
+            description="Request timeout in milliseconds (1000 - 30000)"
+            class="flex items-center justify-between py-4 gap-4"
+          >
+            <UInput
+              v-model.number="localConfig.duckduckgo.timeout"
+              type="number"
+              step="1000"
+              min="1000"
+              max="30000"
+              class="w-32"
+            />
           </UFormField>
         </UCard>
       </div>
