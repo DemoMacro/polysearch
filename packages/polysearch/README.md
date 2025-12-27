@@ -9,13 +9,15 @@
 
 ## Features
 
-- 🌐 **Multi-Engine Support**: Google CSE, DuckDuckGo, NPM Registry with unified API
+- 🌐 **Multi-Engine Support**: Google CSE, DuckDuckGo, NPM Registry, and HTTP Server with unified API
 - 🔄 **Smart Result Merging**: Automatic deduplication and source tracking across engines
 - ⚖️ **Weighted Ranking**: Configure engine priorities for customized result ordering
 - 📝 **TypeScript First**: Full type safety with comprehensive search result types
 - 🔧 **Flexible Operations**: Support for search, suggestions, and pagination
 - 🚀 **High Performance**: Parallel execution with configurable timeouts
 - 💾 **Built-in Caching**: Optional LRU cache support for improved performance
+- 🌐 **HTTP Server**: Built-in HTTP server for easy API deployment
+- 🔌 **HTTP Driver**: Connect to any HTTP search API with full parameter support
 
 ## Installation
 
@@ -236,6 +238,45 @@ const driver = npmDriver({
 // - Configurable scoring weights
 // - Full package information (version, description, links)
 // - True pagination support with page/perPage parameters
+```
+
+### HTTP Driver
+
+```typescript
+import httpDriver from "polysearch/drivers/http";
+
+const driver = httpDriver({
+  baseURL: "http://localhost:3000", // Required: search server URL
+  timeout: 5000, // Optional: request timeout in ms
+  headers: {
+    // Optional: custom headers for authentication
+    Authorization: "Bearer xxx",
+  },
+});
+
+// Features:
+// - Connect to any HTTP search server
+// - Pass arbitrary parameters through query strings
+// - Automatic parameter serialization (numbers, objects, JSON)
+// - Custom headers for API authentication
+// - Timeout configuration
+```
+
+### HTTP Server
+
+```typescript
+import { createSearchServer } from "polysearch/servers/http";
+import duckduckgoDriver from "polysearch/drivers/duckduckgo";
+
+const server = createSearchServer({
+  driver: duckduckgoDriver(),
+});
+
+server.serve(3000);
+
+// API Endpoints:
+// - GET /search?q=query&page=1&perPage=10 - Search with parameters
+// - GET /suggest?q=query - Get suggestions
 ```
 
 ## API Reference

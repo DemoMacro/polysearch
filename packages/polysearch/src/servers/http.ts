@@ -7,8 +7,8 @@ import {
   serve,
   getQuery,
 } from "h3";
-import { createPolySearch } from "./search";
-import { Driver, SearchOptions, SuggestionOptions } from "./types";
+import { createPolySearch } from "../search";
+import { Driver, SearchOptions, SuggestionOptions } from "../types";
 
 export type PolySearchServerRequest = {
   request: globalThis.Request;
@@ -30,8 +30,15 @@ export interface PolySearchServerOptions {
  * - /suggest: Get suggestions with query parameters
  *
  * API Endpoints:
- * - GET /search?q=typescript&limit=10 - Search with query parameters
+ * - GET /search?q=typescript&page=1&perPage=10 - Search with query parameters
  * - GET /suggest?q=typescript - Get suggestions with query parameters
+ *
+ * Query Parameters:
+ * - q (required): Search query string
+ * - page: Page number for pagination (default: 1)
+ * - perPage: Results per page (default: 10)
+ * - cache: Cache configuration as JSON string (e.g., {"ttl":300,"maxItems":100})
+ * - Other parameters are passed through to the driver
  *
  * @param options Search server configuration options
  * @returns An object containing the handler function
@@ -81,15 +88,37 @@ export function createSearchHandler(
 
     // Handle different endpoints
     if (cleanPath === "search") {
+      // Build search options with proper type conversion
       const searchOptions: SearchOptions = {
-        query: q, // Explicitly set query
-        limit: queryParams.limit ? parseInt(queryParams.limit, 10) : undefined,
-        ...Object.fromEntries(
-          Object.entries(queryParams).filter(
-            ([key]) => key !== "q" && key !== "query" && key !== "limit",
-          ),
-        ), // Pass other query parameters
+        query: q,
       };
+
+      // Parse standard numeric parameters
+      if (queryParams.page) {
+        searchOptions.page = parseInt(queryParams.page as string, 10);
+      }
+      if (queryParams.perPage) {
+        searchOptions.perPage = parseInt(queryParams.perPage as string, 10);
+      }
+
+      // Parse cache config (JSON string)
+      if (queryParams.cache) {
+        try {
+          searchOptions.cache = JSON.parse(queryParams.cache as string);
+        } catch {
+          // Invalid JSON, ignore
+        }
+      }
+
+      // Pass through any other parameters (driver-specific options)
+      Object.entries(queryParams).forEach(([key, value]) => {
+        if (
+          !["q", "query", "page", "perPage", "cache"].includes(key) &&
+          value !== undefined
+        ) {
+          (searchOptions as any)[key] = value;
+        }
+      });
 
       const results = await searchInstance.search(searchOptions);
       return JSON.stringify(results, null, 2);
@@ -97,13 +126,15 @@ export function createSearchHandler(
 
     if (cleanPath === "suggest") {
       const suggestOptions: SuggestionOptions = {
-        query: q, // Explicitly set query
-        ...Object.fromEntries(
-          Object.entries(queryParams).filter(
-            ([key]) => key !== "q" && key !== "query",
-          ),
-        ), // Pass other query parameters
+        query: q,
       };
+
+      // Pass through any other parameters
+      Object.entries(queryParams).forEach(([key, value]) => {
+        if (!["q", "query"].includes(key) && value !== undefined) {
+          (suggestOptions as any)[key] = value;
+        }
+      });
 
       const suggestions = await searchInstance.suggest(suggestOptions);
       return JSON.stringify({ suggestions }, null, 2);

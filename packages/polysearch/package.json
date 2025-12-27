@@ -1,6 +1,6 @@
 {
   "name": "polysearch",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Unified search interface supporting multiple search engines with deduplication and weighted ranking",
   "main": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -17,10 +17,10 @@
       "require": "./dist/drivers/*.cjs",
       "types": "./dist/drivers/*.d.ts"
     },
-    "./server": {
-      "import": "./dist/server.mjs",
-      "require": "./dist/server.cjs",
-      "types": "./dist/server.d.ts"
+    "./servers/*": {
+      "import": "./dist/servers/*.mjs",
+      "require": "./dist/servers/*.cjs",
+      "types": "./dist/servers/*.d.ts"
     }
   },
   "scripts": {
@@ -46,7 +46,10 @@
     "typescript",
     "driver",
     "unified-api",
-    "search-api"
+    "search-api",
+    "http-server",
+    "http-client",
+    "api-wrapper"
   ],
   "author": {
     "name": "Demo Macro",

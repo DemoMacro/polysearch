@@ -2,7 +2,7 @@
  * PolySearch Server Example
  */
 
-import { createSearchServer } from "../packages/polysearch/src/server";
+import { createSearchServer } from "../packages/polysearch/src/servers/http";
 import duckduckgoDriver from "../packages/polysearch/src/drivers/duckduckgo";
 // import googleCSEDriver from "../packages/polysearch/src/drivers/google-cse";
 
