@@ -1,6 +1,6 @@
 import { createStorage } from "unstorage";
 import lruDriver from "unstorage/drivers/lru-cache";
-import type { CacheOptions, CacheConfig, SearchResponse } from "./types";
+import type { CacheConfig, SearchResponse } from "./types";
 
 // Cache manager for drivers
 export function createCache(cacheConfig?: CacheConfig) {

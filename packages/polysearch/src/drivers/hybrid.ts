@@ -151,7 +151,7 @@ export default function hybridDriver(options: HybridDriverOptions): Driver {
     throw new Error("HybridDriver requires at least one driver");
   }
 
-  const cache = createCache(cacheConfig);
+  createCache(cacheConfig);
 
   // Normalize driver configurations
   const normalizedDrivers = drivers.map(

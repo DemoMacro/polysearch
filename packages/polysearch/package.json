@@ -1,6 +1,6 @@
 {
   "name": "polysearch",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Unified search interface supporting multiple search engines with deduplication and weighted ranking",
   "main": "dist/index.mjs",
   "types": "dist/index.d.ts",

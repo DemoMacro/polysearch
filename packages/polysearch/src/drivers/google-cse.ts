@@ -236,9 +236,6 @@ export default function googleCSEDriver(
           ? parseInt(cursor.estimatedResultCount.replace(/,/g, ""))
           : undefined;
 
-        // Extract pagination info
-        const currentPageIndex = cursor.currentPageIndex || 0;
-
         const result: GoogleCSESearchResponse = {
           results,
           totalResults,
