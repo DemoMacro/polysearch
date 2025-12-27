@@ -37,7 +37,22 @@ export function createCache(cacheConfig?: CacheConfig) {
     ttl,
 
     async get(key: string): Promise<SearchResponse | null> {
-      return await storage.get<SearchResponse>(key);
+      const value = await storage.get<SearchResponse>(key);
+      if (!value) return null;
+
+      const meta = await storage.getMeta(key);
+      if (meta?.mtime && typeof meta.mtime.getTime === "function") {
+        const age = (Date.now() - meta.mtime.getTime()) / 1000;
+        if (age > ttl) {
+          await storage.removeItem(key);
+          return null;
+        }
+      } else {
+        await storage.removeItem(key);
+        return null;
+      }
+
+      return value;
     },
 
     async set(key: string, value: SearchResponse): Promise<void> {
