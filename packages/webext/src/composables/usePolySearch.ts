@@ -98,7 +98,7 @@ export function usePolySearch() {
 
     try {
       const manager = getSearchManager();
-      const response: SearchResponse = await manager.search({
+      const response = await manager.search({
         query,
         page,
         perPage: perPageNum,
