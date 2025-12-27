@@ -3,20 +3,26 @@
 ![GitHub](https://img.shields.io/github/license/DemoMacro/polysearch)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](https://www.contributor-covenant.org/version/2/1/code_of_conduct)
 
-> Universal search engine driver library supporting multiple search providers with unified API
+> Unified search interface supporting multiple search engines with intelligent result merging and weighted ranking
 
 ## Features
 
-- 🔍 **Multi-Engine Support**: Google CSE, DuckDuckGo, NPM Registry with unified API
+- 🌐 **Multi-Engine Support**: Google CSE, DuckDuckGo, NPM Registry, and HTTP Server with unified API
+- 🔄 **Smart Result Merging**: Automatic deduplication and source tracking across engines
+- ⚖️ **Weighted Ranking**: Configure engine priorities for customized result ordering
 - 📝 **TypeScript First**: Full type safety with comprehensive search result types
 - 🔧 **Flexible Operations**: Support for search, suggestions, and pagination
-- 🚀 **High Performance**: Built on modern web APIs with minimal dependencies
+- 🚀 **High Performance**: Parallel execution with configurable timeouts
+- 💾 **Built-in Caching**: Optional LRU cache support for improved performance
+- 🌐 **HTTP Server**: Built-in HTTP server for easy API deployment
+- 🔌 **HTTP Driver**: Connect to any HTTP search API with full parameter support
 
 ## Packages
 
-This is a monorepo that contains the following package:
+This is a monorepo that contains the following packages:
 
-- **[polysearch](./packages/polysearch/README.md)** - Universal search engine driver with TypeScript support
+- **[polysearch](./packages/polysearch/README.md)** - Unified search interface supporting multiple search engines with deduplication and weighted ranking
+- **[polysearch-webext](./packages/webext/README.md)** - Browser extension for unified web search across multiple engines
 
 ## Quick Start
 
@@ -35,6 +41,7 @@ pnpm install
 
 ```typescript
 import { createPolySearch } from "polysearch";
+import hybridDriver from "polysearch/drivers/hybrid";
 import googleCSEDriver from "polysearch/drivers/google-cse";
 import duckduckgoDriver from "polysearch/drivers/duckduckgo";
 import npmDriver from "polysearch/drivers/npm";
@@ -46,24 +53,38 @@ const googleSearch = createPolySearch({
   }),
 });
 
-// Create search manager with DuckDuckGo driver
+// Create search manager with DuckDuckGo driver (with default caching)
 const duckDuckGoSearch = createPolySearch({
-  driver: duckduckgoDriver(),
+  driver: duckduckgoDriver({
+    cache: { perPage: 20, ttl: 3600, maxItems: 200 },
+  }),
 });
 
-// Create search manager with NPM Registry driver
+// Create search manager with NPM driver (caching disabled)
 const npmSearch = createPolySearch({
   driver: npmDriver({
-    quality: 0.4, // Emphasize package quality
-    popularity: 0.3, // Emphasize popularity
-    maintenance: 0.3, // Emphasize maintenance status
+    cache: false, // Disable caching
+  }),
+});
+
+// Create search manager with Hybrid driver
+const hybridSearch = createPolySearch({
+  driver: hybridDriver({
+    drivers: [
+      { driver: duckduckgoDriver(), weight: 0.7 },
+      {
+        driver: googleCSEDriver({ cx: "your-cse-id" }),
+        weight: 0.3,
+        timeout: 5000,
+      },
+    ],
   }),
 });
 
 // Search with Google CSE
 const googleResults = await googleSearch.search({
   query: "TypeScript",
-  limit: 10,
+  perPage: 10,
 });
 console.log(`Found ${googleResults.results.length} results`);
 
@@ -76,14 +97,14 @@ console.log("Suggestions:", suggestions);
 // Search with DuckDuckGo
 const duckResults = await duckDuckGoSearch.search({
   query: "TypeScript",
-  limit: 5,
+  perPage: 5,
 });
 console.log(`DuckDuckGo results: ${duckResults.results.length}`);
 
 // Search with NPM Registry
 const npmResults = await npmSearch.search({
   query: "react",
-  limit: 10,
+  perPage: 10,
 });
 console.log(`NPM packages found: ${npmResults.results.length}`);
 console.log(`Total available: ${npmResults.totalResults}`);
@@ -114,7 +135,8 @@ const search = createPolySearch({
 // Search with pagination support
 const results = await search.search({
   query: "machine learning",
-  limit: 20,
+  page: 1,
+  perPage: 20,
 });
 
 console.log("Total results:", results.totalResults);
@@ -122,9 +144,8 @@ console.log("Results count:", results.results.length);
 
 // Access pagination information
 if (results.pagination) {
-  console.log("Current page:", results.pagination.currentPageIndex);
-  console.log("Pages:", results.pagination.pages);
-  console.log("Has next page:", results.pagination.hasNextPage);
+  console.log("Current page:", results.pagination.page);
+  console.log("PerPage:", results.pagination.perPage);
 }
 
 // Get search suggestions
@@ -197,9 +218,11 @@ const driver = duckduckgoDriver(); // No configuration required
 import npmDriver from "polysearch/drivers/npm";
 
 const driver = npmDriver({
-  quality: 0.4, // Emphasize package quality scoring
-  popularity: 0.3, // Emphasize popularity scoring
-  maintenance: 0.3, // Emphasize maintenance scoring
+  registry: "https://registry.npmjs.org", // Optional: custom registry
+  endpoint: "/-/v1/search", // Optional: custom endpoint path
+  quality: 0.4, // Optional: emphasize package quality scoring
+  popularity: 0.3, // Optional: emphasize popularity scoring
+  maintenance: 0.3, // Optional: emphasize maintenance scoring
 });
 
 // Features:
@@ -208,6 +231,29 @@ const driver = npmDriver({
 // - Auto-complete suggestions for package names
 // - Configurable scoring weights
 // - Full package information (version, description, links)
+// - True pagination support with page/perPage parameters
+```
+
+### HTTP Driver
+
+```typescript
+import httpDriver from "polysearch/drivers/http";
+
+const driver = httpDriver({
+  baseURL: "http://localhost:3000", // Required: search server URL
+  timeout: 5000, // Optional: request timeout in ms
+  headers: {
+    // Optional: custom headers for authentication
+    Authorization: "Bearer xxx",
+  },
+});
+
+// Features:
+// - Connect to any HTTP search server
+// - Pass arbitrary parameters through query strings
+// - Automatic parameter serialization (numbers, objects, JSON)
+// - Custom headers for API authentication
+// - Timeout configuration
 ```
 
 ## Server
@@ -215,21 +261,19 @@ const driver = npmDriver({
 ### Quick Start
 
 ```typescript
-import { createSearchServer } from "polysearch/server";
+import { createSearchServer } from "polysearch/servers/http";
 import duckduckgoDriver from "polysearch/drivers/duckduckgo";
 
-// Create and start server
 const server = createSearchServer({
   driver: duckduckgoDriver(),
 });
 
 server.serve(3000);
+
+// API Endpoints:
+// - GET /search?q=query&page=1&perPage=10 - Search with parameters
+// - GET /suggest?q=query - Get suggestions
 ```
-
-### API Endpoints
-
-- `GET /search?q=typescript&limit=10` - Search with query parameters
-- `GET /suggest?q=typescript` - Get suggestions with query parameters
 
 ### Options
 
@@ -265,7 +309,8 @@ Perform a search query.
 **Parameters:**
 
 - `query` (string) - Search query
-- `limit` (number, optional) - Maximum number of results to return
+- `page` (number, optional) - Page number for pagination (1-based)
+- `perPage` (number, optional) - Results per page for pagination
 
 **Returns:** `Promise<SearchResponse>` - Search results with metadata
 
@@ -285,7 +330,10 @@ Get search suggestions/autocomplete.
 interface SearchResponse {
   results: SearchResult[]; // Array of search results
   totalResults?: number; // Total number of results (if available)
-  pagination?: Record<string, any>; // Pagination information (driver-specific)
+  pagination?: {
+    page?: number; // Current page number (1-based)
+    perPage?: number; // Results per page
+  };
 }
 
 interface SearchResult {
@@ -312,6 +360,9 @@ pnpm lint
 bun playground/google-cse.ts
 bun playground/duckduckgo.ts
 bun playground/npm.ts
+bun playground/hybrid.ts
+bun playground/http-server.ts
+bun playground/http.ts
 ```
 
 ## License
