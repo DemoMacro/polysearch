@@ -1,6 +1,6 @@
 {
   "name": "polysearch",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "Unified search interface supporting multiple search engines with deduplication and weighted ranking",
   "keywords": [
     "api-wrapper",

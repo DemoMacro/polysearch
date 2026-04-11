@@ -135,8 +135,8 @@ async function callTool(
   }
 }
 
-export function createMcpHandler(options: McpServerOptions = {}): EventHandler {
-  // Resolve driver: explicit > poly from names > default poly
+// Resolve driver and tools from options
+function resolveDriverAndTools(options: McpServerOptions) {
   let driver: Driver;
   let availableDrivers: readonly string[];
 
@@ -151,12 +151,44 @@ export function createMcpHandler(options: McpServerOptions = {}): EventHandler {
     availableDrivers = DRIVER_NAMES;
   }
 
-  const tools = buildTools(availableDrivers);
+  return { driver, tools: buildTools(availableDrivers) };
+}
+
+// Handle a single JSON-RPC request and return the response
+async function handleRequest(
+  method: string,
+  params: Record<string, unknown>,
+  driver: Driver,
+  tools: ReturnType<typeof buildTools>,
+) {
+  if (method === "initialize") {
+    return {
+      protocolVersion: "2026-04-12",
+      capabilities: { tools: {} },
+      serverInfo: { name: "polysearch", version },
+    };
+  }
+
+  if (method === "tools/list") {
+    return { tools };
+  }
+
+  if (method === "tools/call") {
+    const name = params.name as string;
+    const args = (params.arguments ?? {}) as Record<string, unknown>;
+    return callTool(name, args, driver);
+  }
+
+  throw new Error(`Unknown method: ${method}`);
+}
+
+export function createMcpHandler(options: McpServerOptions = {}): EventHandler {
+  const { driver, tools } = resolveDriverAndTools(options);
 
   return defineJsonRpcHandler({
     methods: {
       initialize: () => ({
-        protocolVersion: "2026-04-11",
+        protocolVersion: "2026-04-12",
         capabilities: { tools: {} },
         serverInfo: { name: "polysearch", version },
       }),
@@ -186,4 +218,39 @@ export function createMcpServer(options: McpServerOptions = {}): {
     handler,
     serve: (port: number = 3000) => serve(app, { port }),
   };
+}
+
+// Start MCP stdio transport — reads JSON-RPC from stdin, writes responses to stdout
+export async function startMcpStdio(options: McpServerOptions = {}): Promise<void> {
+  const { driver, tools } = resolveDriverAndTools(options);
+  const rl = require("readline").createInterface({ input: process.stdin });
+
+  const write = (msg: object) => process.stdout.write(JSON.stringify(msg) + "\n");
+
+  for await (const line of rl) {
+    let message: { jsonrpc: string; id?: number; method?: string; params?: Record<string, unknown> };
+    try {
+      message = JSON.parse(line);
+    } catch {
+      write({ jsonrpc: "2.0", error: { code: -32700, message: "Parse error" }, id: null });
+      continue;
+    }
+
+    // Notification — no id, no response needed
+    if (message.id === undefined) continue;
+
+    try {
+      const result = await handleRequest(message.method ?? "", message.params ?? {}, driver, tools);
+      write({ jsonrpc: "2.0", id: message.id, result });
+    } catch (error) {
+      write({
+        jsonrpc: "2.0",
+        id: message.id,
+        error: {
+          code: -32601,
+          message: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
+  }
 }

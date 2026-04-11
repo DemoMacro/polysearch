@@ -2,11 +2,9 @@
 
 import { defineCommand, runMain } from "citty";
 import { createPolySearch } from "./search";
-import { createMcpServer } from "./servers/mcp";
-import {
-  DRIVER_NAMES,
-  createDriver,
-} from "./drivers/registry";
+import { createMcpServer, startMcpStdio } from "./servers/mcp";
+import { DRIVER_NAMES, createDriver } from "./drivers/registry";
+import { version } from "../package.json";
 
 const driverNames = [...DRIVER_NAMES];
 
@@ -128,40 +126,49 @@ const suggestCommand = defineCommand({
 const mcpCommand = defineCommand({
   meta: {
     name: "mcp",
-    description: "Start MCP server (JSON-RPC over HTTP)",
+    description: "Start MCP server (stdio or HTTP transport)",
   },
   args: {
+    transport: {
+      type: "enum",
+      description: "Transport mode",
+      options: ["stdio", "http"],
+      default: "stdio",
+    },
     port: {
       type: "string",
-      description: "Server port",
+      description: "Server port (HTTP transport only)",
       default: "3000",
     },
     drivers: {
       type: "string",
-      description: "Comma-separated driver names for poly mode (default: duckduckgo,google-cse if GOOGLE_CSE_CX is set)",
+      description:
+        "Comma-separated driver names for poly mode (default: duckduckgo,google-cse if GOOGLE_CSE_CX is set)",
     },
   },
-  run({ args }) {
-    const port = Number(args.port) || 3000;
-
+  async run({ args }) {
     let options = {};
     if (args.drivers) {
       const names = (args.drivers as string).split(",").map((s) => s.trim());
       options = { drivers: names };
     }
 
-    const server = createMcpServer(options);
-    console.log(`MCP server listening on http://localhost:${port}/mcp`);
-    server.serve(port);
+    if (args.transport === "http") {
+      const port = Number(args.port) || 3000;
+      const server = createMcpServer(options);
+      console.log(`MCP server listening on http://localhost:${port}/mcp`);
+      server.serve(port);
+    } else {
+      await startMcpStdio(options);
+    }
   },
 });
 
 const main = defineCommand({
   meta: {
     name: "polysearch",
-    version: "0.0.9",
-    description:
-      "Unified search interface supporting multiple search engines",
+    version,
+    description: "Unified search interface supporting multiple search engines",
   },
   subCommands: {
     search: searchCommand,

@@ -164,9 +164,12 @@ polysearch search "react" --driver npm --json
 # Suggestions
 polysearch suggest "git" --driver google
 
-# Start MCP server
-polysearch mcp --port 3000
+# Start MCP server (stdio mode, for Claude Code etc.)
+polysearch mcp
 polysearch mcp --drivers "duckduckgo,npm"
+
+# Start MCP server (HTTP mode)
+polysearch mcp --transport http --port 3000
 ```
 
 ## Server
