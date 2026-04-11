@@ -1,4 +1,7 @@
 import { H3, defineJsonRpcHandler, serve, type EventHandler } from "h3";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
 import { createPolySearch } from "../search";
 import { DRIVER_NAMES, createDefaultPolyDriver, createPolyDriver } from "../drivers/registry";
 import type { Driver } from "../types";
@@ -9,8 +12,69 @@ export interface McpServerOptions {
   drivers?: string[];
 }
 
-// Build tool definitions from available driver names
-function buildTools(availableDrivers: readonly string[]) {
+// Execute a search tool call
+async function callSearchTool(
+  args: Record<string, unknown>,
+  driver: Driver,
+) {
+  const query = args.query as string;
+  const perPage = (args.perPage as number) || 10;
+  const page = (args.page as number) || 1;
+
+  const search = createPolySearch({ driver });
+  const response = await search.search({ query, perPage, page });
+
+  const lines: string[] = [];
+  lines.push(`Found ${response.totalResults ?? response.results.length} results:\n`);
+
+  for (const [i, result] of response.results.entries()) {
+    lines.push(`${i + 1}. ${result.title}`);
+    lines.push(`   ${result.url}`);
+    if (result.snippet) lines.push(`   ${result.snippet}`);
+    if (result.sources?.length) lines.push(`   [${result.sources.join(", ")}]`);
+    lines.push("");
+  }
+
+  if (response.results.length === 0) {
+    lines.push(`No results found for "${query}".`);
+  }
+
+  return { content: [{ type: "text" as const, text: lines.join("\n") }] };
+}
+
+// Execute a suggest tool call
+async function callSuggestTool(
+  args: Record<string, unknown>,
+  driver: Driver,
+) {
+  const query = args.query as string;
+
+  const search = createPolySearch({ driver });
+  const suggestions = await search.suggest({ query });
+
+  if (suggestions.length === 0) {
+    return {
+      content: [{ type: "text" as const, text: `No suggestions for "${query}".` }],
+    };
+  }
+
+  const text = `Suggestions for "${query}":\n${suggestions
+    .slice(0, 10)
+    .map((s) => `  - ${s}`)
+    .join("\n")}`;
+
+  return { content: [{ type: "text" as const, text }] };
+}
+
+// Resolve driver from options
+function resolveDriver(options: McpServerOptions) {
+  if (options.driver) return { driver: options.driver, availableDrivers: [...DRIVER_NAMES] as readonly string[] };
+  if (options.drivers?.length) return { driver: createPolyDriver(options.drivers), availableDrivers: options.drivers };
+  return { driver: createDefaultPolyDriver(), availableDrivers: [...DRIVER_NAMES] as readonly string[] };
+}
+
+// Build tool definitions for HTTP handler
+function buildToolDefs(availableDrivers: readonly string[]) {
   return [
     {
       name: "search",
@@ -62,146 +126,32 @@ function buildTools(availableDrivers: readonly string[]) {
   ];
 }
 
-// Execute a tool call
-async function callTool(
-  name: string,
-  args: Record<string, unknown>,
-  driver: Driver,
-): Promise<{
-  content: Array<{ type: string; text: string }>;
-  isError?: boolean;
-}> {
-  try {
-    if (name === "search") {
-      const query = args.query as string;
-      const perPage = (args.perPage as number) || 10;
-      const page = (args.page as number) || 1;
-
-      const search = createPolySearch({ driver });
-      const response = await search.search({ query, perPage, page });
-
-      const lines: string[] = [];
-      lines.push(`Found ${response.totalResults ?? response.results.length} results:\n`);
-
-      for (const [i, result] of response.results.entries()) {
-        lines.push(`${i + 1}. ${result.title}`);
-        lines.push(`   ${result.url}`);
-        if (result.snippet) lines.push(`   ${result.snippet}`);
-        if (result.sources?.length) lines.push(`   [${result.sources.join(", ")}]`);
-        lines.push("");
-      }
-
-      if (response.results.length === 0) {
-        lines.push(`No results found for "${query}".`);
-      }
-
-      return { content: [{ type: "text", text: lines.join("\n") }] };
-    }
-
-    if (name === "suggest") {
-      const query = args.query as string;
-
-      const search = createPolySearch({ driver });
-      const suggestions = await search.suggest({ query });
-
-      if (suggestions.length === 0) {
-        return {
-          content: [{ type: "text", text: `No suggestions for "${query}".` }],
-        };
-      }
-
-      const text = `Suggestions for "${query}":\n${suggestions
-        .slice(0, 10)
-        .map((s) => `  - ${s}`)
-        .join("\n")}`;
-
-      return { content: [{ type: "text", text }] };
-    }
-
-    return {
-      content: [{ type: "text", text: `Unknown tool: ${name}` }],
-      isError: true,
-    };
-  } catch (error) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Tool failed: ${error instanceof Error ? error.message : String(error)}`,
-        },
-      ],
-      isError: true,
-    };
-  }
-}
-
-// Resolve driver and tools from options
-function resolveDriverAndTools(options: McpServerOptions) {
-  let driver: Driver;
-  let availableDrivers: readonly string[];
-
-  if (options.driver) {
-    driver = options.driver;
-    availableDrivers = DRIVER_NAMES;
-  } else if (options.drivers?.length) {
-    driver = createPolyDriver(options.drivers!);
-    availableDrivers = options.drivers;
-  } else {
-    driver = createDefaultPolyDriver();
-    availableDrivers = DRIVER_NAMES;
-  }
-
-  return { driver, tools: buildTools(availableDrivers) };
-}
-
-// Handle a single JSON-RPC request and return the response
-async function handleRequest(
-  method: string,
-  params: Record<string, unknown>,
-  driver: Driver,
-  tools: ReturnType<typeof buildTools>,
-) {
-  if (method === "initialize") {
-    return {
-      protocolVersion: "2026-04-12",
-      capabilities: { tools: { list: true, call: true } },
-      serverInfo: { name: "polysearch", version },
-    };
-  }
-
-  if (method === "tools/list") {
-    return { tools };
-  }
-
-  if (method === "tools/call") {
-    const name = params.name as string;
-    const args = (params.arguments ?? {}) as Record<string, unknown>;
-    return callTool(name, args, driver);
-  }
-
-  throw new Error(`Unknown method: ${method}`);
-}
-
 export function createMcpHandler(options: McpServerOptions = {}): EventHandler {
-  const { driver, tools } = resolveDriverAndTools(options);
+  const { driver, availableDrivers } = resolveDriver(options);
+  const tools = buildToolDefs(availableDrivers);
 
   return defineJsonRpcHandler({
     methods: {
       initialize: () => ({
         protocolVersion: "2026-04-12",
-        capabilities: { tools: { list: true, call: true } },
+        capabilities: { tools: {} },
         serverInfo: { name: "polysearch", version },
       }),
 
       "tools/list": () => ({ tools }),
 
       "tools/call": ({ params }) => {
-        const name = (params as Record<string, unknown>).name as string;
-        const args = ((params as Record<string, unknown>).arguments ?? {}) as Record<
-          string,
-          unknown
-        >;
-        return callTool(name, args, driver);
+        const p = params as Record<string, unknown>;
+        const name = p.name as string;
+        const args = (p.arguments ?? {}) as Record<string, unknown>;
+
+        if (name === "search") return callSearchTool(args, driver);
+        if (name === "suggest") return callSuggestTool(args, driver);
+
+        return {
+          content: [{ type: "text" as const, text: `Unknown tool: ${name}` }],
+          isError: true,
+        };
       },
     },
   });
@@ -220,65 +170,44 @@ export function createMcpServer(options: McpServerOptions = {}): {
   };
 }
 
-// Start MCP stdio transport with Content-Length framing
+// Start MCP stdio transport using official SDK
 export async function startMcpStdio(options: McpServerOptions = {}): Promise<void> {
-  const { driver, tools } = resolveDriverAndTools(options);
-  const decoder = new TextDecoder();
+  const { driver, availableDrivers } = resolveDriver(options);
 
-  let buffer = "";
-  let contentLength: number | null = null;
+  const server = new McpServer({ name: "polysearch", version });
 
-  const write = (msg: object) => {
-    const json = JSON.stringify(msg);
-    process.stdout.write(`Content-Length: ${Buffer.byteLength(json)}\r\n\r\n${json}`);
-  };
+  // Register search tool
+  server.registerTool(
+    "search",
+    {
+      description: "Search the web using various engines",
+      inputSchema: z.object({
+        query: z.string().describe("Search query"),
+        driver: z.enum(availableDrivers as [string, ...string[]]).default("duckduckgo").describe("Search engine to use"),
+        perPage: z.number().min(1).max(50).default(10).describe("Results per page"),
+        page: z.number().min(1).default(1).describe("Page number (1-based)"),
+      }),
+    },
+    async (args) => {
+      return callSearchTool(args as Record<string, unknown>, driver);
+    },
+  );
 
-  process.stdin.on("data", async (chunk) => {
-    buffer += decoder.decode(chunk as Buffer, { stream: true });
+  // Register suggest tool
+  server.registerTool(
+    "suggest",
+    {
+      description: "Get search suggestions/autocomplete",
+      inputSchema: z.object({
+        query: z.string().describe("Partial query for suggestions"),
+        driver: z.enum(availableDrivers as [string, ...string[]]).default("duckduckgo").describe("Search engine to use"),
+      }),
+    },
+    async (args) => {
+      return callSuggestTool(args as Record<string, unknown>, driver);
+    },
+  );
 
-    while (true) {
-      if (contentLength === null) {
-        const headerEnd = buffer.indexOf("\r\n\r\n");
-        if (headerEnd === -1) return;
-
-        const header = buffer.slice(0, headerEnd);
-        const match = header.match(/Content-Length:\s*(\d+)/i);
-        if (!match) return;
-
-        contentLength = Number(match[1]);
-        buffer = buffer.slice(headerEnd + 4);
-      }
-
-      if (buffer.length < contentLength) return;
-
-      const body = buffer.slice(0, contentLength);
-      buffer = buffer.slice(contentLength);
-      contentLength = null;
-
-      let message: { jsonrpc?: string; id?: number; method?: string; params?: Record<string, unknown> };
-      try {
-        message = JSON.parse(body);
-      } catch {
-        write({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } });
-        continue;
-      }
-
-      // Notification — no id, no response needed
-      if (message.id === undefined) continue;
-
-      try {
-        const result = await handleRequest(message.method ?? "", message.params ?? {}, driver, tools);
-        write({ jsonrpc: "2.0", id: message.id, result });
-      } catch (error) {
-        write({
-          jsonrpc: "2.0",
-          id: message.id,
-          error: {
-            code: -32601,
-            message: error instanceof Error ? error.message : String(error),
-          },
-        });
-      }
-    }
-  });
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
 }
