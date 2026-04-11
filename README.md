@@ -22,7 +22,6 @@
 This is a monorepo that contains the following packages:
 
 - **[polysearch](./packages/polysearch/README.md)** - Unified search interface supporting multiple search engines with deduplication and weighted ranking
-- **[polysearch-webext](./packages/webext/README.md)** - Browser extension for unified web search across multiple engines
 
 ## Quick Start
 

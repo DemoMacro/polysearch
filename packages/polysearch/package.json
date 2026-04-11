@@ -2,68 +2,67 @@
   "name": "polysearch",
   "version": "0.0.9",
   "description": "Unified search interface supporting multiple search engines with deduplication and weighted ranking",
-  "main": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
-  "exports": {
-    ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
-    },
-    "./drivers/*": {
-      "import": "./dist/drivers/*.mjs",
-      "require": "./dist/drivers/*.cjs",
-      "types": "./dist/drivers/*.d.ts"
-    },
-    "./servers/*": {
-      "import": "./dist/servers/*.mjs",
-      "require": "./dist/servers/*.cjs",
-      "types": "./dist/servers/*.d.ts"
-    }
-  },
-  "scripts": {
-    "dev": "unbuild --stub",
-    "build": "unbuild",
-    "prepack": "pnpm build"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/DemoMacro/polysearch.git"
-  },
   "keywords": [
-    "search",
-    "polysearch",
-    "google-cse",
+    "api-wrapper",
+    "autocomplete",
+    "driver",
     "duckduckgo",
+    "google-cse",
+    "http-client",
+    "http-server",
     "npm",
     "npm-registry",
     "package-search",
+    "polysearch",
+    "search",
+    "search-api",
     "search-engine",
-    "autocomplete",
     "suggestions",
     "typescript",
-    "driver",
-    "unified-api",
-    "search-api",
-    "http-server",
-    "http-client",
-    "api-wrapper"
+    "unified-api"
   ],
+  "homepage": "https://github.com/DemoMacro/polysearch#readme",
+  "bugs": {
+    "url": "https://github.com/DemoMacro/polysearch/issues"
+  },
+  "license": "MIT",
   "author": {
     "name": "Demo Macro",
     "email": "abc@imst.xyz",
     "url": "https://imst.xyz/"
   },
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/DemoMacro/polysearch/issues"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DemoMacro/polysearch.git"
   },
-  "homepage": "https://github.com/DemoMacro/polysearch#readme",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.mts"
+    },
+    "./drivers/*": {
+      "import": "./dist/drivers/*.mjs",
+      "types": "./dist/drivers/*.d.mts"
+    },
+    "./servers/*": {
+      "import": "./dist/servers/*.mjs",
+      "types": "./dist/servers/*.d.mts"
+    }
+  },
+  "scripts": {
+    "dev": "basis build --stub",
+    "build": "basis build",
+    "prepack": "pnpm build"
+  },
   "dependencies": {
-    "h3": "2.0.1-rc.6",
+    "h3": "2.0.1-rc.20",
     "ofetch": "1.5.1",
-    "unstorage": "1.17.3"
+    "unstorage": "1.17.5"
   }
 }
