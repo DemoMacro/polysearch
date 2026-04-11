@@ -68,7 +68,7 @@
     "prepack": "pnpm build"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/sdk": "1.29.0",
     "citty": "0.2.2",
     "h3": "2.0.1-rc.20",
     "ofetch": "1.5.1",
