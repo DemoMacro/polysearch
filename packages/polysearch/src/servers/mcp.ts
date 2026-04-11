@@ -17,7 +17,7 @@ function resolveDriver(options: McpServerOptions) {
 }
 
 // Execute a search tool call
-async function callSearchTool(
+export async function callSearchTool(
   args: Record<string, unknown>,
   driver: Driver,
 ) {
@@ -47,7 +47,7 @@ async function callSearchTool(
 }
 
 // Execute a suggest tool call
-async function callSuggestTool(
+export async function callSuggestTool(
   args: Record<string, unknown>,
   driver: Driver,
 ) {
