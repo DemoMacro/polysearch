@@ -22,7 +22,7 @@ const server = createSearchServer({
 
 console.log("🚀 Starting PolySearch server on port 8081...");
 console.log("📖 API Usage:");
-console.log("   GET  http://localhost:8081/search?q=github&limit=5");
+console.log("   GET  http://localhost:8081/search?q=github&perPage=5");
 console.log("   POST http://localhost:8081/suggest?q=github");
 console.log("   HEAD http://localhost:8081/ (server info)");
 console.log("");

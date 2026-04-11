@@ -11,9 +11,7 @@ console.log("<🔍 GitHub Code Search Driver Example\n");
 // Note: Code search requires authentication token
 const token = process.env.GITHUB_TOKEN;
 if (!token) {
-  console.error(
-    "GitHub Code Search requires GITHUB_TOKEN environment variable",
-  );
+  console.error("GitHub Code Search requires GITHUB_TOKEN environment variable");
   process.exit(1);
 }
 
@@ -31,7 +29,7 @@ async function testCodeSearch() {
     console.log("Searching for 'useState' in TypeScript files...");
     const results1 = await search.search({
       query: "useState language:typescript",
-      limit: 5,
+      perPage: 5,
     });
     console.log("useState TypeScript results:", results1.results.length);
     results1.results.forEach((result, index) => {
@@ -43,7 +41,7 @@ async function testCodeSearch() {
     console.log("\nSearching for 'Config' in Facebook React repository...");
     const results2 = await search.search({
       query: "Config repo:facebook/react",
-      limit: 3,
+      perPage: 3,
     });
     console.log("Config in React repo:", results2.results.length);
     results2.results.forEach((result, index) => {
@@ -54,7 +52,7 @@ async function testCodeSearch() {
     console.log("\nSearching for 'export default' in src directories...");
     const results3 = await search.search({
       query: "export default path:src/",
-      limit: 3,
+      perPage: 3,
     });
     console.log("Export defaults in src:", results3.results.length);
     results3.results.forEach((result, index) => {
@@ -65,7 +63,7 @@ async function testCodeSearch() {
     console.log("\nSearching for 'package.json' files...");
     const results4 = await search.search({
       query: "filename:package.json",
-      limit: 3,
+      perPage: 3,
     });
     console.log("package.json files:", results4.results.length);
     results4.results.forEach((result, index) => {
@@ -76,7 +74,7 @@ async function testCodeSearch() {
     console.log("\nSearching for README files...");
     const results5 = await search.search({
       query: "filename:README",
-      limit: 3,
+      perPage: 3,
     });
     console.log("README files:", results5.results.length);
     results5.results.forEach((result, index) => {
@@ -87,7 +85,7 @@ async function testCodeSearch() {
     console.log("\nSearching for test files...");
     const results6 = await search.search({
       query: "test path:test/",
-      limit: 3,
+      perPage: 3,
     });
     console.log("Test files:", results6.results.length);
     results6.results.forEach((result, index) => {
@@ -98,7 +96,7 @@ async function testCodeSearch() {
     console.log("\nSearching for TypeScript configuration files...");
     const results7 = await search.search({
       query: "filename:tsconfig.json",
-      limit: 3,
+      perPage: 3,
     });
     console.log("tsconfig.json files:", results7.results.length);
     results7.results.forEach((result, index) => {

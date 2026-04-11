@@ -123,11 +123,8 @@ export interface NPMDriverOptions extends DriverOptions {
   cache?: CacheConfig;
 }
 
-export default function npmDriver(
-  driverOptions: NPMDriverOptions = {},
-): Driver {
-  const { registry = "https://registry.npmjs.org", endpoint = "/-/v1/search" } =
-    driverOptions;
+export default function npmDriver(driverOptions: NPMDriverOptions = {}): Driver {
+  const { registry = "https://registry.npmjs.org", endpoint = "/-/v1/search" } = driverOptions;
 
   const searchEndpoint = `${registry}${endpoint}`;
   const quality = driverOptions.quality;
@@ -167,12 +164,9 @@ export default function npmDriver(
         });
 
         // Add optional scoring weights if provided
-        if (quality !== undefined)
-          searchParams.set("quality", quality.toString());
-        if (popularity !== undefined)
-          searchParams.set("popularity", popularity.toString());
-        if (maintenance !== undefined)
-          searchParams.set("maintenance", maintenance.toString());
+        if (quality !== undefined) searchParams.set("quality", quality.toString());
+        if (popularity !== undefined) searchParams.set("popularity", popularity.toString());
+        if (maintenance !== undefined) searchParams.set("maintenance", maintenance.toString());
 
         const url = `${searchEndpoint}?${searchParams.toString()}`;
 
@@ -232,9 +226,7 @@ export default function npmDriver(
         });
 
         // Extract package names as suggestions
-        return response.objects.map(
-          (item: NPMSearchObject) => item.package.name,
-        );
+        return response.objects.map((item: NPMSearchObject) => item.package.name);
       } catch (error) {
         console.error("NPM suggest error:", error);
         return [];

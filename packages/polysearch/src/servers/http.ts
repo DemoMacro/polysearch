@@ -1,12 +1,4 @@
-import {
-  defineHandler,
-  EventHandlerWithFetch,
-  H3,
-  H3Event,
-  HTTPError,
-  serve,
-  getQuery,
-} from "h3";
+import { defineHandler, EventHandlerWithFetch, H3, H3Event, HTTPError, serve, getQuery } from "h3";
 import { createPolySearch } from "../search";
 import { Driver, SearchOptions, SuggestionOptions } from "../types";
 
@@ -43,9 +35,7 @@ export interface PolySearchServerOptions {
  * @param options Search server configuration options
  * @returns An object containing the handler function
  */
-export function createSearchHandler(
-  opts: PolySearchServerOptions,
-): EventHandlerWithFetch {
+export function createSearchHandler(opts: PolySearchServerOptions): EventHandlerWithFetch {
   if (!opts.driver) {
     throw new Error("Driver is required");
   }
@@ -112,10 +102,7 @@ export function createSearchHandler(
 
       // Pass through any other parameters (driver-specific options)
       Object.entries(queryParams).forEach(([key, value]) => {
-        if (
-          !["q", "query", "page", "perPage", "cache"].includes(key) &&
-          value !== undefined
-        ) {
+        if (!["q", "query", "page", "perPage", "cache"].includes(key) && value !== undefined) {
           (searchOptions as any)[key] = value;
         }
       });

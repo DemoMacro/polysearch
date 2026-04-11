@@ -22,7 +22,7 @@ async function testUserSearch() {
     console.log("Searching for users with 'john' in username...");
     const results1 = await search.search({
       query: "john",
-      limit: 5,
+      perPage: 5,
     });
     console.log("Users with 'john':", results1.results.length);
     results1.results.forEach((result, index) => {
@@ -33,7 +33,7 @@ async function testUserSearch() {
     console.log("\nSearching for users in San Francisco...");
     const results2 = await search.search({
       query: "location:San Francisco",
-      limit: 3,
+      perPage: 3,
     });
     console.log("Users in SF:", results2.results.length);
     results2.results.forEach((result, index) => {
@@ -44,7 +44,7 @@ async function testUserSearch() {
     console.log("\nSearching for users with >1000 followers...");
     const results3 = await search.search({
       query: "followers:>1000",
-      limit: 3,
+      perPage: 3,
       sort: "followers",
       order: "desc",
     });
@@ -57,7 +57,7 @@ async function testUserSearch() {
     console.log("\nSearching for organizations with 'microsoft'...");
     const results4 = await search.search({
       query: "microsoft type:org",
-      limit: 3,
+      perPage: 3,
     });
     console.log("Organizations:", results4.results.length);
     results4.results.forEach((result, index) => {
@@ -68,7 +68,7 @@ async function testUserSearch() {
     console.log("\nSearching for users with >50 repositories...");
     const results5 = await search.search({
       query: "repos:>50 type:user",
-      limit: 3,
+      perPage: 3,
       sort: "repositories",
       order: "desc",
     });

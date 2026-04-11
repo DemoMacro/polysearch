@@ -7,19 +7,33 @@ const driver = googleDriver();
 // Create search manager
 const search = createPolySearch({ driver });
 
+async function testSearch() {
+  try {
+    console.log("=== Testing Google Search ===");
+
+    console.log("Searching for 'TypeScript'...");
+    const results = await search.search({ query: "TypeScript", perPage: 5 });
+    console.log(`Found ${results.results.length} results:`);
+    results.results.forEach((r, i) => {
+      console.log(`\n[${i + 1}] ${r.title}`);
+      console.log(`    URL: ${r.url}`);
+      console.log(`    Snippet: ${r.snippet?.slice(0, 100)}...`);
+    });
+    console.log(`\nTotal: ${results.totalResults}`);
+    console.log(`Pagination:`, results.pagination);
+  } catch (error) {
+    console.error("Search test failed:", error);
+  }
+}
+
 async function testSuggestions() {
   try {
-    console.log("=== Testing Google Suggestions ===");
+    console.log("\n=== Testing Google Suggestions ===");
 
     console.log("Testing suggestions with 'git'...");
     const suggestions1 = await search.suggest({ query: "git" });
     console.log("Suggestions for 'git':", suggestions1);
     console.log("Count:", suggestions1.length);
-
-    console.log("\nTesting suggestions with 'github'...");
-    const suggestions2 = await search.suggest({ query: "github" });
-    console.log("Suggestions for 'github':", suggestions2);
-    console.log("Count:", suggestions2.length);
 
     console.log("\nTesting suggestions with 'typescript'...");
     const suggestions3 = await search.suggest({ query: "typescript" });
@@ -31,6 +45,7 @@ async function testSuggestions() {
 }
 
 async function runAllTests() {
+  await testSearch();
   await testSuggestions();
 }
 

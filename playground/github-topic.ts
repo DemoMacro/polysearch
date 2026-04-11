@@ -22,7 +22,7 @@ async function testTopicSearch() {
     console.log("Searching for 'typescript' topics...");
     const results1 = await search.search({
       query: "typescript",
-      limit: 5,
+      perPage: 5,
     });
     console.log("TypeScript topics:", results1.results.length);
     results1.results.forEach((result, index) => {
@@ -33,7 +33,7 @@ async function testTopicSearch() {
     console.log("\nSearching for featured 'javascript' topics...");
     const results2 = await search.search({
       query: "javascript is:featured",
-      limit: 3,
+      perPage: 3,
     });
     console.log("Featured JavaScript topics:", results2.results.length);
     results2.results.forEach((result, index) => {
@@ -44,7 +44,7 @@ async function testTopicSearch() {
     console.log("\nSearching for 'react' topics...");
     const results3 = await search.search({
       query: "react",
-      limit: 3,
+      perPage: 3,
     });
     console.log("React topics:", results3.results.length);
     results3.results.forEach((result, index) => {
@@ -55,7 +55,7 @@ async function testTopicSearch() {
     console.log("\nSearching for 'docker' topics...");
     const results4 = await search.search({
       query: "docker",
-      limit: 3,
+      perPage: 3,
     });
     console.log("Docker topics:", results4.results.length);
     results4.results.forEach((result, index) => {

@@ -29,7 +29,7 @@
   "author": {
     "name": "Demo Macro",
     "email": "abc@imst.xyz",
-    "url": "https://imst.xyz/"
+    "url": "https://www.demomacro.com/"
   },
   "repository": {
     "type": "git",
@@ -63,6 +63,7 @@
   "dependencies": {
     "h3": "2.0.1-rc.20",
     "ofetch": "1.5.1",
+    "playwright": "1.59.1",
     "unstorage": "1.17.5"
   }
 }

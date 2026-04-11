@@ -1,11 +1,5 @@
 import { ofetch } from "ofetch";
-import type {
-  Driver,
-  DriverOptions,
-  SearchOptions,
-  SearchResponse,
-  CacheConfig,
-} from "..";
+import type { Driver, DriverOptions, SearchOptions, SearchResponse, CacheConfig } from "..";
 import { createCache } from "../cache";
 
 // GitHub Commit Driver Options
@@ -185,9 +179,7 @@ export interface GitHubCommitSearchResponse {
   items: GitHubCommitItem[];
 }
 
-export default function githubCommitDriver(
-  driverOptions: GitHubCommitDriverOptions = {},
-): Driver {
+export default function githubCommitDriver(driverOptions: GitHubCommitDriverOptions = {}): Driver {
   const { token } = driverOptions;
   const cache = createCache(driverOptions.cache);
 
@@ -195,9 +187,7 @@ export default function githubCommitDriver(
     name: "github-commit",
     options: driverOptions,
 
-    search: async (
-      searchOptions: GitHubCommitSearchOptions,
-    ): Promise<SearchResponse> => {
+    search: async (searchOptions: GitHubCommitSearchOptions): Promise<SearchResponse> => {
       const { query } = searchOptions;
 
       if (!query.trim()) {
@@ -210,8 +200,7 @@ export default function githubCommitDriver(
         return { results: [] };
       }
 
-      const limit =
-        searchOptions.per_page || searchOptions.limit || cache.perPage || 30;
+      const limit = searchOptions.per_page || searchOptions.perPage || cache.perPage || 30;
       const page = searchOptions.page || 1;
       const cacheKey = `github-commit:${query}:${page}:${limit}`;
 

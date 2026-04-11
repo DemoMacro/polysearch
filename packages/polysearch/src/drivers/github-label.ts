@@ -1,11 +1,5 @@
 import { ofetch } from "ofetch";
-import type {
-  Driver,
-  DriverOptions,
-  SearchOptions,
-  SearchResponse,
-  CacheConfig,
-} from "..";
+import type { Driver, DriverOptions, SearchOptions, SearchResponse, CacheConfig } from "..";
 import { createCache } from "../cache";
 
 // GitHub Label Driver Options
@@ -38,9 +32,7 @@ export interface GitHubLabelSearchResponse {
   items: GitHubLabel[];
 }
 
-export default function githubLabelDriver(
-  driverOptions: GitHubLabelDriverOptions = {},
-): Driver {
+export default function githubLabelDriver(driverOptions: GitHubLabelDriverOptions = {}): Driver {
   const { token } = driverOptions;
   const cache = createCache(driverOptions.cache);
 
@@ -48,9 +40,7 @@ export default function githubLabelDriver(
     name: "github-label",
     options: driverOptions,
 
-    search: async (
-      searchOptions: GitHubLabelSearchOptions,
-    ): Promise<SearchResponse> => {
+    search: async (searchOptions: GitHubLabelSearchOptions): Promise<SearchResponse> => {
       const { query } = searchOptions;
 
       if (!query.trim()) {
@@ -63,8 +53,7 @@ export default function githubLabelDriver(
         return { results: [] };
       }
 
-      const limit =
-        searchOptions.per_page || searchOptions.limit || cache.perPage || 30;
+      const limit = searchOptions.perPage || cache.perPage || 30;
       const page = searchOptions.page || 1;
       const cacheKey = `github-label:${query}:${page}:${limit}`;
 
@@ -83,10 +72,7 @@ export default function githubLabelDriver(
 
         // Add repository_id filter if provided
         if (searchOptions.repository_id) {
-          searchParams.set(
-            "repository_id",
-            searchOptions.repository_id.toString(),
-          );
+          searchParams.set("repository_id", searchOptions.repository_id.toString());
         }
 
         // Add page parameter if provided

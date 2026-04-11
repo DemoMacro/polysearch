@@ -22,7 +22,7 @@ async function testIssueSearch() {
     console.log("Searching for 'bug' issues...");
     const results1 = await search.search({
       query: "bug",
-      limit: 5,
+      perPage: 5,
       sort: "created",
       order: "desc",
     });
@@ -36,7 +36,7 @@ async function testIssueSearch() {
     console.log("\nSearching for issues with 'help wanted' label...");
     const results2 = await search.search({
       query: 'label:"help wanted"',
-      limit: 3,
+      perPage: 3,
     });
     console.log("Help wanted issues:", results2.results.length);
     results2.results.forEach((result, index) => {
@@ -47,7 +47,7 @@ async function testIssueSearch() {
     console.log("\nSearching for issues in facebook/react repository...");
     const results3 = await search.search({
       query: "repo:facebook/react state:open",
-      limit: 3,
+      perPage: 3,
       sort: "updated",
     });
     console.log("Open React issues:", results3.results.length);
@@ -59,7 +59,7 @@ async function testIssueSearch() {
     console.log("\nSearching for recently closed 'enhancement' issues...");
     const results4 = await search.search({
       query: "enhancement state:closed",
-      limit: 3,
+      perPage: 3,
       sort: "updated",
       order: "desc",
     });
@@ -72,7 +72,7 @@ async function testIssueSearch() {
     console.log("\nSearching for issues by specific author...");
     const results5 = await search.search({
       query: "author:torvalds",
-      limit: 3,
+      perPage: 3,
     });
     console.log("Issues by torvalds:", results5.results.length);
     results5.results.forEach((result, index) => {
@@ -80,12 +80,10 @@ async function testIssueSearch() {
     });
 
     // Search by multiple labels
-    console.log(
-      "\nSearching for issues with 'bug' and 'high priority' labels...",
-    );
+    console.log("\nSearching for issues with 'bug' and 'high priority' labels...");
     const results6 = await search.search({
       query: 'label:bug label:"high priority"',
-      limit: 3,
+      perPage: 3,
     });
     console.log("High priority bugs:", results6.results.length);
     results6.results.forEach((result, index) => {
@@ -96,7 +94,7 @@ async function testIssueSearch() {
     console.log("\nSearching for pull requests about 'refactor'...");
     const results7 = await search.search({
       query: "refactor is:pr",
-      limit: 3,
+      perPage: 3,
     });
     console.log("Refactor PRs:", results7.results.length);
     results7.results.forEach((result, index) => {
@@ -107,7 +105,7 @@ async function testIssueSearch() {
     console.log("\nSearching for issues mentioning specific user...");
     const results8 = await search.search({
       query: "mentions:octocat",
-      limit: 3,
+      perPage: 3,
     });
     console.log("Issues mentioning octocat:", results8.results.length);
     results8.results.forEach((result, index) => {

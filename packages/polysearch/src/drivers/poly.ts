@@ -9,8 +9,8 @@ import type {
 } from "..";
 import { createCache } from "../cache";
 
-// HybridDriver specific options
-export interface HybridDriverOptions extends DriverOptions {
+// PolyDriver specific options
+export interface PolyDriverOptions extends DriverOptions {
   drivers: Array<{
     driver: Driver;
     weight?: number; // Default 1.0
@@ -65,9 +65,7 @@ function normalizeUrl(url: string): string {
 }
 
 // Deduplicate results by URL, merging sources and keeping higher weighted results
-function deduplicateResults(
-  results: WeightedSearchResult[],
-): WeightedSearchResult[] {
+function deduplicateResults(results: WeightedSearchResult[]): WeightedSearchResult[] {
   const urlMap = new Map<string, WeightedSearchResult>();
 
   for (const result of results) {
@@ -89,10 +87,7 @@ function deduplicateResults(
         existing.rank = result.rank; // Take the better rank from higher weighted driver
       }
       // If same weight but better rank, update rank
-      else if (
-        result.weight === existing.weight &&
-        result.rank < existing.rank
-      ) {
+      else if (result.weight === existing.weight && result.rank < existing.rank) {
         existing.rank = result.rank;
       }
     }
@@ -132,11 +127,7 @@ function deduplicateSuggestions(suggestions: string[]): string[] {
 }
 
 // Helper function to create timeout wrapper
-function withTimeout<T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  errorMessage: string,
-): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
   const timeoutPromise = new Promise<T>((_, reject) => {
     setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
   });
@@ -144,26 +135,24 @@ function withTimeout<T>(
   return Promise.race([promise, timeoutPromise]);
 }
 
-export default function hybridDriver(options: HybridDriverOptions): Driver {
+export default function polyDriver(options: PolyDriverOptions): Driver {
   const { drivers, cache: cacheConfig } = options;
 
   if (!drivers || drivers.length === 0) {
-    throw new Error("HybridDriver requires at least one driver");
+    throw new Error("PolyDriver requires at least one driver");
   }
 
   createCache(cacheConfig);
 
   // Normalize driver configurations
-  const normalizedDrivers = drivers.map(
-    ({ driver, weight = 1.0, timeout }) => ({
-      driver,
-      weight,
-      timeout,
-    }),
-  );
+  const normalizedDrivers = drivers.map(({ driver, weight = 1.0, timeout }) => ({
+    driver,
+    weight,
+    timeout,
+  }));
 
   return {
-    name: "hybrid",
+    name: "poly",
     options,
 
     search: async (searchOptions: SearchOptions): Promise<SearchResponse> => {
@@ -185,35 +174,33 @@ export default function hybridDriver(options: HybridDriverOptions): Driver {
 
       while (allResults.length < targetCount && driverPage <= maxPages) {
         // Fetch current page from all drivers
-        const driverPromises = normalizedDrivers.map(
-          async ({ driver, weight, timeout }) => {
-            const searchPromise = Promise.resolve(
-              driver.search({ query, page: driverPage, perPage }),
-            );
-            const result = timeout
-              ? await withTimeout(
-                  searchPromise,
-                  timeout,
-                  `Driver ${driver.name} timed out after ${timeout}ms`,
-                )
-              : await searchPromise;
+        const driverPromises = normalizedDrivers.map(async ({ driver, weight, timeout }) => {
+          const searchPromise = Promise.resolve(
+            driver.search({ query, page: driverPage, perPage }),
+          );
+          const result = timeout
+            ? await withTimeout(
+                searchPromise,
+                timeout,
+                `Driver ${driver.name} timed out after ${timeout}ms`,
+              )
+            : await searchPromise;
 
-            // Collect total from this driver (only first time we see it)
-            const driverName = driver.name || "unknown";
-            if (!driverTotals.has(driverName)) {
-              const driverTotal = result.totalResults;
-              if (driverTotal !== undefined && driverTotal > 0) {
-                driverTotals.set(driverName, driverTotal);
-              }
+          // Collect total from this driver (only first time we see it)
+          const driverName = driver.name || "unknown";
+          if (!driverTotals.has(driverName)) {
+            const driverTotal = result.totalResults;
+            if (driverTotal !== undefined && driverTotal > 0) {
+              driverTotals.set(driverName, driverTotal);
             }
+          }
 
-            return {
-              driverName,
-              weight,
-              results: result.results || [],
-            };
-          },
-        );
+          return {
+            driverName,
+            weight,
+            results: result.results || [],
+          };
+        });
 
         const driverResults = await Promise.allSettled(driverPromises);
 
@@ -222,14 +209,12 @@ export default function hybridDriver(options: HybridDriverOptions): Driver {
           if (promiseResult.status === "fulfilled") {
             const { driverName, weight, results } = promiseResult.value;
 
-            const weightedResults: WeightedSearchResult[] = results.map(
-              (result, index) => ({
-                ...result,
-                weight,
-                sources: [driverName],
-                rank: (driverPage - 1) * perPage + index + 1,
-              }),
-            );
+            const weightedResults: WeightedSearchResult[] = results.map((result, index) => ({
+              ...result,
+              weight,
+              sources: [driverName],
+              rank: (driverPage - 1) * perPage + index + 1,
+            }));
 
             allResults.push(...weightedResults);
           }
@@ -257,19 +242,16 @@ export default function hybridDriver(options: HybridDriverOptions): Driver {
       );
 
       // Convert WeightedSearchResult to SearchResult, preserving sources
-      const results: SearchResult[] = paginatedResults.map(
-        ({ title, url, snippet, sources }) => ({
-          title,
-          url,
-          snippet,
-          sources,
-        }),
-      );
+      const results: SearchResult[] = paginatedResults.map(({ title, url, snippet, sources }) => ({
+        title,
+        url,
+        snippet,
+        sources,
+      }));
 
       return {
         results,
-        totalResults:
-          estimatedTotalResults > 0 ? estimatedTotalResults : allResults.length,
+        totalResults: estimatedTotalResults > 0 ? estimatedTotalResults : allResults.length,
         pagination: { page, perPage },
       };
     },
@@ -283,24 +265,20 @@ export default function hybridDriver(options: HybridDriverOptions): Driver {
 
       try {
         // Execute all drivers that support suggestions
-        const driverPromises = normalizedDrivers.map(
-          async ({ driver, timeout }) => {
-            if (!driver.suggest) {
-              return [];
-            }
+        const driverPromises = normalizedDrivers.map(async ({ driver, timeout }) => {
+          if (!driver.suggest) {
+            return [];
+          }
 
-            const suggestPromise = Promise.resolve(
-              driver.suggest(suggestOptions),
-            );
-            return timeout
-              ? await withTimeout(
-                  suggestPromise,
-                  timeout,
-                  `Driver ${driver.name} suggest timed out after ${timeout}ms`,
-                )
-              : await suggestPromise;
-          },
-        );
+          const suggestPromise = Promise.resolve(driver.suggest(suggestOptions));
+          return timeout
+            ? await withTimeout(
+                suggestPromise,
+                timeout,
+                `Driver ${driver.name} suggest timed out after ${timeout}ms`,
+              )
+            : await suggestPromise;
+        });
 
         // Wait for all suggestions
         const suggestionResults = await Promise.allSettled(driverPromises);

@@ -21,7 +21,7 @@ async function demonstrateNPMSearch() {
   try {
     const reactResults = await npmSearch.search({
       query: "react",
-      limit: 5,
+      perPage: 5,
     });
 
     console.log(`Found ${reactResults.results.length} packages:`);
@@ -32,9 +32,7 @@ async function demonstrateNPMSearch() {
     });
 
     if (reactResults.totalResults) {
-      console.log(
-        `\n📊 Total packages available: ${reactResults.totalResults}`,
-      );
+      console.log(`\n📊 Total packages available: ${reactResults.totalResults}`);
     }
   } catch (error) {
     console.error("Error searching for React packages:", error);
@@ -47,7 +45,7 @@ async function demonstrateNPMSearch() {
   try {
     const tsResults = await npmSearch.search({
       query: "typescript",
-      limit: 3,
+      perPage: 3,
     });
 
     console.log(`Found ${tsResults.results.length} TypeScript packages:`);
@@ -88,7 +86,7 @@ async function demonstrateNPMSearch() {
   try {
     const testResults = await npmSearch.search({
       query: "testing framework",
-      limit: 3,
+      perPage: 3,
     });
 
     console.log(`Found ${testResults.results.length} testing packages:`);

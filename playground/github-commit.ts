@@ -11,9 +11,7 @@ console.log("<🔍 GitHub Commit Search Driver Example\n");
 // Note: Commit search requires authentication token
 const token = process.env.GITHUB_TOKEN;
 if (!token) {
-  console.error(
-    "GitHub Commit Search requires GITHUB_TOKEN environment variable",
-  );
+  console.error("GitHub Commit Search requires GITHUB_TOKEN environment variable");
   process.exit(1);
 }
 
@@ -31,7 +29,7 @@ async function testCommitSearch() {
     console.log("Searching for 'fix' commits...");
     const results1 = await search.search({
       query: "fix",
-      limit: 5,
+      perPage: 5,
     });
     console.log("Fix commits:", results1.results.length);
     results1.results.forEach((result, index) => {
@@ -43,7 +41,7 @@ async function testCommitSearch() {
     console.log("\nSearching for 'update' commits in facebook/react...");
     const results2 = await search.search({
       query: "update repo:facebook/react",
-      limit: 3,
+      perPage: 3,
     });
     console.log("Update commits in React:", results2.results.length);
     results2.results.forEach((result, index) => {
@@ -54,7 +52,7 @@ async function testCommitSearch() {
     console.log("\nSearching for commits by specific author...");
     const results3 = await search.search({
       query: "author:torvalds",
-      limit: 3,
+      perPage: 3,
       sort: "author-date",
       order: "desc",
     });
@@ -67,7 +65,7 @@ async function testCommitSearch() {
     console.log("\nSearching for 'merge' commits...");
     const results4 = await search.search({
       query: "Merge",
-      limit: 3,
+      perPage: 3,
       sort: "committer-date",
       order: "desc",
     });
@@ -80,7 +78,7 @@ async function testCommitSearch() {
     console.log("\nSearching for 'typo' fixes...");
     const results5 = await search.search({
       query: "typo",
-      limit: 3,
+      perPage: 3,
     });
     console.log("Typo fix commits:", results5.results.length);
     results5.results.forEach((result, index) => {

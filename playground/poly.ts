@@ -1,11 +1,11 @@
-import hybridDriver from "../packages/polysearch/src/drivers/hybrid";
+import polyDriver from "../packages/polysearch/src/drivers/poly";
 import duckduckgoDriver from "../packages/polysearch/src/drivers/duckduckgo";
 import googleCSEDriver from "../packages/polysearch/src/drivers/google-cse";
 import { createPolySearch } from "../packages/polysearch/src/search";
 
-// Create hybrid driver combining multiple search engines
+// Create poly driver combining multiple search engines
 // Google CSE has higher priority (1.0) than DuckDuckGo (0.5)
-const driver = hybridDriver({
+const driver = polyDriver({
   drivers: [
     {
       driver: googleCSEDriver({
@@ -26,7 +26,7 @@ const search = createPolySearch({ driver });
 
 async function testSuggestions() {
   try {
-    console.log("=== Testing Hybrid Driver Suggestions ===");
+    console.log("=== Testing Poly Driver Suggestions ===");
 
     console.log("\nTesting suggestions with 'typescript'...");
     const suggestions1 = await search.suggest({ query: "typescript" });
@@ -49,7 +49,7 @@ async function testSuggestions() {
 
 async function testSearch() {
   try {
-    console.log("\n\n=== Testing Hybrid Driver Search ===");
+    console.log("\n\n=== Testing Poly Driver Search ===");
 
     console.log("\nTesting search with 'GitHub'...");
     const results = await search.search({ query: "GitHub", perPage: 5 });
@@ -61,10 +61,7 @@ async function testSearch() {
       console.log("- Title:", results.results[0].title);
       console.log("- URL:", results.results[0].url);
       console.log("- Sources:", results.results[0].sources); // Show sources
-      console.log(
-        "- Snippet:",
-        results.results[0].snippet?.substring(0, 100) + "...",
-      );
+      console.log("- Snippet:", results.results[0].snippet?.substring(0, 100) + "...");
     }
 
     if (results.totalResults) {
@@ -96,12 +93,10 @@ async function testSearch() {
 }
 
 async function runAllTests() {
-  console.log("🚀 Starting Hybrid Driver Tests");
+  console.log("🚀 Starting Poly Driver Tests");
   console.log("Google CSE priority: 1.0 (higher)");
   console.log("DuckDuckGo priority: 0.5 (lower)");
-  console.log(
-    "Results will be sorted by priority (Google first if same URL)\n",
-  );
+  console.log("Results will be sorted by priority (Google first if same URL)\n");
 
   await testSuggestions();
   await testSearch();

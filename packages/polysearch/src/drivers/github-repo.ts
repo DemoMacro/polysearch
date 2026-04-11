@@ -1,11 +1,5 @@
 import { ofetch } from "ofetch";
-import type {
-  Driver,
-  DriverOptions,
-  SearchOptions,
-  SearchResponse,
-  CacheConfig,
-} from "..";
+import type { Driver, DriverOptions, SearchOptions, SearchResponse, CacheConfig } from "..";
 import { createCache } from "../cache";
 
 // GitHub Driver Options
@@ -55,17 +49,12 @@ export interface GitHubSearchResponse {
   items: GitHubRepo[];
 }
 
-export default function githubRepoDriver(
-  driverOptions: GitHubRepoDriverOptions = {},
-): Driver {
+export default function githubRepoDriver(driverOptions: GitHubRepoDriverOptions = {}): Driver {
   const { token } = driverOptions;
   const cache = createCache(driverOptions.cache);
 
   // Helper function to build query string with qualifiers
-  function buildQuery(
-    query: string,
-    searchOptions: GitHubRepoSearchOptions,
-  ): string {
+  function buildQuery(query: string, searchOptions: GitHubRepoSearchOptions): string {
     const qualifiers: string[] = [];
 
     // Extract qualifiers from query if present (e.g., "language:typescript react")
@@ -78,24 +67,15 @@ export default function githubRepoDriver(
 
     // Add qualifiers from searchOptions that aren't already in query
     Object.entries(searchOptions).forEach(([key, value]) => {
-      if (
-        value !== undefined &&
-        !qualifierParts.some((p) => p.startsWith(`${key}:`))
-      ) {
+      if (value !== undefined && !qualifierParts.some((p) => p.startsWith(`${key}:`))) {
         // Only add non-core API parameters as qualifiers
-        if (
-          key !== "query" &&
-          key !== "limit" &&
-          key !== "sort" &&
-          key !== "order"
-        ) {
+        if (key !== "query" && key !== "limit" && key !== "sort" && key !== "order") {
           qualifiers.push(`${key}:${value}`);
         }
       }
     });
 
-    const qualifiersStr =
-      qualifiers.length > 0 ? ` ${qualifiers.join(" ")}` : "";
+    const qualifiersStr = qualifiers.length > 0 ? ` ${qualifiers.join(" ")}` : "";
     return `${cleanQuery}${qualifiersStr}`;
   }
 
@@ -103,16 +83,14 @@ export default function githubRepoDriver(
     name: "github-repo",
     options: driverOptions,
 
-    search: async (
-      searchOptions: GitHubRepoSearchOptions,
-    ): Promise<SearchResponse> => {
+    search: async (searchOptions: GitHubRepoSearchOptions): Promise<SearchResponse> => {
       const { query } = searchOptions;
 
       if (!query.trim()) {
         return { results: [] };
       }
 
-      const limit = searchOptions.limit || cache.perPage || 30;
+      const limit = searchOptions.perPage || cache.perPage || 30;
       const page = searchOptions.page || 1;
       const cacheKey = `github-repo:${query}:${page}:${limit}`;
 
@@ -190,9 +168,7 @@ export default function githubRepoDriver(
 
         // Handle rate limit errors
         if (error instanceof Error && error.message.includes("403")) {
-          console.error(
-            "GitHub API rate limit exceeded. Consider using a token.",
-          );
+          console.error("GitHub API rate limit exceeded. Consider using a token.");
         }
 
         return { results: [] };

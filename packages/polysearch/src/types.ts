@@ -1,7 +1,5 @@
 // Driver options
-export interface DriverOptions {
-  [key: string]: any;
-}
+export interface DriverOptions {}
 
 // Cache options
 export interface CacheOptions {
@@ -9,7 +7,6 @@ export interface CacheOptions {
   perPage?: number; // Default results per page
   ttl?: number; // Cache expiration time in seconds
   maxItems?: number; // Maximum items in LRU cache (default: 100)
-  [key: string]: any; // Additional cache configuration
 }
 
 // Cache configuration (can be options or false to disable)
@@ -33,26 +30,25 @@ export interface SearchResponse {
   };
 }
 
-// Search options
-export interface SearchOptions {
+// Search options (record style for driver-specific parameter extensibility)
+export interface SearchOptions extends Record<string, any> {
   query: string;
   page?: number;
   perPage?: number;
-  cache?: CacheConfig; // Optional: cache config or false to disable, modifying this creates a new cache
-  [key: string]: any;
+  cache?: CacheConfig;
 }
 
 // Suggestion options (autocomplete)
-export interface SuggestionOptions {
+export interface SuggestionOptions extends Record<string, any> {
   query: string;
-  [key: string]: any;
 }
 
 // Utility types
 export type MaybePromise<T> = T | Promise<T>;
 
 // Search driver interface
-export interface Driver<OptionsT = DriverOptions> {
+// OptionsT: driver configuration (e.g. token, cache)
+export interface Driver<OptionsT = any> {
   name?: string;
   options?: OptionsT;
 

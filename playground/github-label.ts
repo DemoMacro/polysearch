@@ -11,9 +11,7 @@ console.log("<🔍 GitHub Label Search Driver Example\n");
 // Note: Label search requires authentication token
 const token = process.env.GITHUB_TOKEN;
 if (!token) {
-  console.error(
-    "GitHub Label Search requires GITHUB_TOKEN environment variable",
-  );
+  console.error("GitHub Label Search requires GITHUB_TOKEN environment variable");
   process.exit(1);
 }
 
@@ -31,7 +29,7 @@ async function testLabelSearch() {
     console.log("Searching for 'bug' labels...");
     const results1 = await search.search({
       query: "bug",
-      limit: 5,
+      perPage: 5,
     });
     console.log("Bug labels:", results1.results.length);
     results1.results.forEach((result, index) => {
@@ -42,7 +40,7 @@ async function testLabelSearch() {
     console.log("\nSearching for 'enhancement' labels...");
     const results2 = await search.search({
       query: "enhancement",
-      limit: 3,
+      perPage: 3,
     });
     console.log("Enhancement labels:", results2.results.length);
     results2.results.forEach((result, index) => {
@@ -53,7 +51,7 @@ async function testLabelSearch() {
     console.log("\nSearching for 'priority' labels...");
     const results3 = await search.search({
       query: "priority",
-      limit: 3,
+      perPage: 3,
     });
     console.log("Priority labels:", results3.results.length);
     results3.results.forEach((result, index) => {
@@ -64,7 +62,7 @@ async function testLabelSearch() {
     console.log("\nSearching for 'documentation' labels...");
     const results4 = await search.search({
       query: "documentation",
-      limit: 3,
+      perPage: 3,
     });
     console.log("Documentation labels:", results4.results.length);
     results4.results.forEach((result, index) => {
@@ -75,7 +73,7 @@ async function testLabelSearch() {
     console.log("\nSearching for 'good first issue' labels...");
     const results5 = await search.search({
       query: "good first issue",
-      limit: 3,
+      perPage: 3,
     });
     console.log("Good first issue labels:", results5.results.length);
     results5.results.forEach((result, index) => {

@@ -1,11 +1,5 @@
 import { ofetch } from "ofetch";
-import type {
-  Driver,
-  DriverOptions,
-  SearchOptions,
-  SearchResponse,
-  CacheConfig,
-} from "..";
+import type { Driver, DriverOptions, SearchOptions, SearchResponse, CacheConfig } from "..";
 import { createCache } from "../cache";
 
 // GitHub Topic Driver Options
@@ -39,9 +33,7 @@ export interface GitHubTopicSearchResponse {
   items: GitHubTopic[];
 }
 
-export default function githubTopicDriver(
-  driverOptions: GitHubTopicDriverOptions = {},
-): Driver {
+export default function githubTopicDriver(driverOptions: GitHubTopicDriverOptions = {}): Driver {
   const { token } = driverOptions;
   const cache = createCache(driverOptions.cache);
 
@@ -49,17 +41,14 @@ export default function githubTopicDriver(
     name: "github-topic",
     options: driverOptions,
 
-    search: async (
-      searchOptions: GitHubTopicSearchOptions,
-    ): Promise<SearchResponse> => {
+    search: async (searchOptions: GitHubTopicSearchOptions): Promise<SearchResponse> => {
       const { query } = searchOptions;
 
       if (!query.trim()) {
         return { results: [] };
       }
 
-      const limit =
-        searchOptions.per_page || searchOptions.limit || cache.perPage || 30;
+      const limit = searchOptions.perPage || cache.perPage || 30;
       const page = searchOptions.page || 1;
       const cacheKey = `github-topic:${query}:${page}:${limit}`;
 
@@ -105,9 +94,7 @@ export default function githubTopicDriver(
           title: topic.display_name,
           url: `https://github.com/topics/${topic.name}`,
           snippet:
-            topic.description ||
-            topic.short_description ||
-            `Featured topic: ${topic.display_name}`,
+            topic.description || topic.short_description || `Featured topic: ${topic.display_name}`,
         }));
 
         // Apply limit if needed

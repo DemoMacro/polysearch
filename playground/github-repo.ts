@@ -22,7 +22,7 @@ async function testRepositorySearch() {
     console.log("Searching for TypeScript repositories...");
     const results1 = await search.search({
       query: "TypeScript",
-      limit: 5,
+      perPage: 5,
       sort: "stars",
       order: "desc",
     });
@@ -35,7 +35,7 @@ async function testRepositorySearch() {
     console.log("\nSearching for React repositories with >1000 stars...");
     const results2 = await search.search({
       query: "react stars:>=1000",
-      limit: 3,
+      perPage: 3,
       sort: "stars",
     });
     console.log("React repositories:", results2.results.length);
@@ -47,7 +47,7 @@ async function testRepositorySearch() {
     console.log("\nSearching for Rust repositories with 'cli' in name...");
     const results3 = await search.search({
       query: "cli in:name language:rust",
-      limit: 3,
+      perPage: 3,
     });
     console.log("Rust CLI repositories:", results3.results.length);
     results3.results.forEach((result, index) => {
@@ -55,12 +55,10 @@ async function testRepositorySearch() {
     });
 
     // Search by topics
-    console.log(
-      "\nSearching for repositories with 'react' and 'typescript' topics...",
-    );
+    console.log("\nSearching for repositories with 'react' and 'typescript' topics...");
     const results4 = await search.search({
       query: "topics:react,typescript",
-      limit: 3,
+      perPage: 3,
     });
     console.log("React+TypeScript repositories:", results4.results.length);
     results4.results.forEach((result, index) => {
@@ -71,7 +69,7 @@ async function testRepositorySearch() {
     console.log("\nSearching for React template repositories...");
     const results5 = await search.search({
       query: "react is:template",
-      limit: 3,
+      perPage: 3,
     });
     console.log("React templates:", results5.results.length);
     results5.results.forEach((result, index) => {
@@ -80,9 +78,7 @@ async function testRepositorySearch() {
 
     // Test total results
     if (results1.totalResults) {
-      console.log(
-        `\nTotal TypeScript repositories found: ${results1.totalResults}`,
-      );
+      console.log(`\nTotal TypeScript repositories found: ${results1.totalResults}`);
     }
   } catch (error) {
     console.error("GitHub repository search test failed:", error);

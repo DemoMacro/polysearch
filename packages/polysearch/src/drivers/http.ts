@@ -1,11 +1,5 @@
 import { ofetch } from "ofetch";
-import type {
-  Driver,
-  DriverOptions,
-  SuggestionOptions,
-  SearchOptions,
-  SearchResponse,
-} from "..";
+import type { Driver, DriverOptions, SuggestionOptions, SearchOptions, SearchResponse } from "..";
 
 export interface HTTPDriverOptions extends DriverOptions {
   baseURL: string;

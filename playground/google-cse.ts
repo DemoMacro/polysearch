@@ -35,7 +35,7 @@ async function testSearch() {
   try {
     console.log("\n\n=== Testing Search ===");
     console.log("Testing search with 'GitHub'...");
-    const results = await search.search({ query: "GitHub", limit: 5 });
+    const results = await search.search({ query: "GitHub", perPage: 5 });
     console.log("Search results:", results);
     console.log("Results count:", results.results.length);
     console.log("First result:", results.results[0]);

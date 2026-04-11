@@ -119,9 +119,7 @@ async function getCSEData(
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
 
-export default function googleCSEDriver(
-  driverOptions: GoogleCSEDriverOptions,
-): Driver {
+export default function googleCSEDriver(driverOptions: GoogleCSEDriverOptions): Driver {
   const { cx } = driverOptions;
   const cache = createCache(driverOptions.cache);
 
@@ -129,9 +127,7 @@ export default function googleCSEDriver(
     name: "google-cse",
     options: driverOptions,
 
-    search: async (
-      searchOptions: GoogleCSESearchOptions,
-    ): Promise<GoogleCSESearchResponse> => {
+    search: async (searchOptions: GoogleCSESearchOptions): Promise<GoogleCSESearchResponse> => {
       const { query } = searchOptions;
 
       if (!query.trim()) {
@@ -210,10 +206,7 @@ export default function googleCSEDriver(
 
         // Match the JSONP callback and capture the JSON content (including newlines)
         const jsonpMatch = cleanResponse.match(
-          new RegExp(
-            `${callbackName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\((.*)\\);?$`,
-            "s",
-          ),
+          new RegExp(`${callbackName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\((.*)\\);?$`, "s"),
         );
         if (!jsonpMatch) {
           return { results: [] };

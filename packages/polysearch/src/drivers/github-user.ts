@@ -1,11 +1,5 @@
 import { ofetch } from "ofetch";
-import type {
-  Driver,
-  DriverOptions,
-  SearchOptions,
-  SearchResponse,
-  CacheConfig,
-} from "..";
+import type { Driver, DriverOptions, SearchOptions, SearchResponse, CacheConfig } from "..";
 import { createCache } from "../cache";
 
 // GitHub User Driver Options
@@ -62,17 +56,12 @@ export interface GitHubUserSearchResponse {
   items: GitHubUser[];
 }
 
-export default function githubUserDriver(
-  driverOptions: GitHubUserDriverOptions = {},
-): Driver {
+export default function githubUserDriver(driverOptions: GitHubUserDriverOptions = {}): Driver {
   const { token } = driverOptions;
   const cache = createCache(driverOptions.cache);
 
   // Helper function to build query string with qualifiers
-  function buildQuery(
-    query: string,
-    searchOptions: GitHubUserSearchOptions,
-  ): string {
+  function buildQuery(query: string, searchOptions: GitHubUserSearchOptions): string {
     const qualifiers: string[] = [];
 
     // Extract qualifiers from query if present
@@ -85,24 +74,15 @@ export default function githubUserDriver(
 
     // Add qualifiers from searchOptions that aren't already in query
     Object.entries(searchOptions).forEach(([key, value]) => {
-      if (
-        value !== undefined &&
-        !qualifierParts.some((p) => p.startsWith(`${key}:`))
-      ) {
+      if (value !== undefined && !qualifierParts.some((p) => p.startsWith(`${key}:`))) {
         // Only add non-core API parameters as qualifiers
-        if (
-          key !== "query" &&
-          key !== "limit" &&
-          key !== "sort" &&
-          key !== "order"
-        ) {
+        if (key !== "query" && key !== "limit" && key !== "sort" && key !== "order") {
           qualifiers.push(`${key}:${value}`);
         }
       }
     });
 
-    const qualifiersStr =
-      qualifiers.length > 0 ? ` ${qualifiers.join(" ")}` : "";
+    const qualifiersStr = qualifiers.length > 0 ? ` ${qualifiers.join(" ")}` : "";
     return `${cleanQuery}${qualifiersStr}`;
   }
 
@@ -110,16 +90,14 @@ export default function githubUserDriver(
     name: "github-user",
     options: driverOptions,
 
-    search: async (
-      searchOptions: GitHubUserSearchOptions,
-    ): Promise<SearchResponse> => {
+    search: async (searchOptions: GitHubUserSearchOptions): Promise<SearchResponse> => {
       const { query } = searchOptions;
 
       if (!query.trim()) {
         return { results: [] };
       }
 
-      const limit = searchOptions.limit || cache.perPage || 30;
+      const limit = searchOptions.perPage || cache.perPage || 30;
       const page = searchOptions.page || 1;
       const cacheKey = `github-user:${query}:${page}:${limit}`;
 

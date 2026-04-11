@@ -6,6 +6,7 @@
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
-    "strict": true
+    "strict": true,
+    "types": ["@types/node"]
   }
 }

@@ -54,9 +54,7 @@ export interface DuckDuckGoDriverOptions extends DriverOptions {
   cache?: CacheConfig;
 }
 
-export default function duckduckgoDriver(
-  driverOptions: DuckDuckGoDriverOptions = {},
-): Driver {
+export default function duckduckgoDriver(driverOptions: DuckDuckGoDriverOptions = {}): Driver {
   const cache = createCache(driverOptions.cache);
 
   return {
@@ -98,9 +96,7 @@ export default function duckduckgoDriver(
 
         // Handle Blob response from ofetch
         const data: DuckDuckGoResponse =
-          response instanceof Blob
-            ? JSON.parse(await response.text())
-            : response;
+          response instanceof Blob ? JSON.parse(await response.text()) : response;
 
         // Collect all potential results from different sources
         let allResults: DuckDuckGoResult[] = [];
@@ -129,11 +125,7 @@ export default function duckduckgoDriver(
 
         // Process all results
         const processedResults = allResults.map((item: DuckDuckGoResult) => ({
-          title:
-            extractTitleFromResult(item.Result) ||
-            item.Text ||
-            item.FirstURL ||
-            "",
+          title: extractTitleFromResult(item.Result) || item.Text || item.FirstURL || "",
           url: item.FirstURL || "",
           snippet: extractTextFromResult(item.Result) || item.Text || "",
         }));
@@ -149,10 +141,7 @@ export default function duckduckgoDriver(
         // Return paginated results
         const page = searchOptions.page || 1;
         const offset = (page - 1) * perPage;
-        const paginatedResults = processedResults.slice(
-          offset,
-          offset + perPage,
-        );
+        const paginatedResults = processedResults.slice(offset, offset + perPage);
 
         return {
           results: paginatedResults,
@@ -181,16 +170,11 @@ export default function duckduckgoDriver(
         });
 
         // Handle Blob response from ofetch
-        const data =
-          response instanceof Blob
-            ? JSON.parse(await response.text())
-            : response;
+        const data = response instanceof Blob ? JSON.parse(await response.text()) : response;
 
         // Extract suggestions from the response
         if (Array.isArray(data)) {
-          return data
-            .map((item: DuckDuckGoSuggestion) => item.phrase || "")
-            .filter(Boolean);
+          return data.map((item: DuckDuckGoSuggestion) => item.phrase || "").filter(Boolean);
         }
 
         return [];
