@@ -164,7 +164,7 @@ async function handleRequest(
   if (method === "initialize") {
     return {
       protocolVersion: "2026-04-12",
-      capabilities: { tools: {} },
+      capabilities: { tools: { list: true, call: true } },
       serverInfo: { name: "polysearch", version },
     };
   }
@@ -189,7 +189,7 @@ export function createMcpHandler(options: McpServerOptions = {}): EventHandler {
     methods: {
       initialize: () => ({
         protocolVersion: "2026-04-12",
-        capabilities: { tools: {} },
+        capabilities: { tools: { list: true, call: true } },
         serverInfo: { name: "polysearch", version },
       }),
 
@@ -220,37 +220,65 @@ export function createMcpServer(options: McpServerOptions = {}): {
   };
 }
 
-// Start MCP stdio transport — reads JSON-RPC from stdin, writes responses to stdout
+// Start MCP stdio transport with Content-Length framing
 export async function startMcpStdio(options: McpServerOptions = {}): Promise<void> {
   const { driver, tools } = resolveDriverAndTools(options);
-  const rl = require("readline").createInterface({ input: process.stdin });
+  const decoder = new TextDecoder();
 
-  const write = (msg: object) => process.stdout.write(JSON.stringify(msg) + "\n");
+  let buffer = "";
+  let contentLength: number | null = null;
 
-  for await (const line of rl) {
-    let message: { jsonrpc: string; id?: number; method?: string; params?: Record<string, unknown> };
-    try {
-      message = JSON.parse(line);
-    } catch {
-      write({ jsonrpc: "2.0", error: { code: -32700, message: "Parse error" }, id: null });
-      continue;
+  const write = (msg: object) => {
+    const json = JSON.stringify(msg);
+    process.stdout.write(`Content-Length: ${Buffer.byteLength(json)}\r\n\r\n${json}`);
+  };
+
+  process.stdin.on("data", async (chunk) => {
+    buffer += decoder.decode(chunk as Buffer, { stream: true });
+
+    while (true) {
+      if (contentLength === null) {
+        const headerEnd = buffer.indexOf("\r\n\r\n");
+        if (headerEnd === -1) return;
+
+        const header = buffer.slice(0, headerEnd);
+        const match = header.match(/Content-Length:\s*(\d+)/i);
+        if (!match) return;
+
+        contentLength = Number(match[1]);
+        buffer = buffer.slice(headerEnd + 4);
+      }
+
+      if (buffer.length < contentLength) return;
+
+      const body = buffer.slice(0, contentLength);
+      buffer = buffer.slice(contentLength);
+      contentLength = null;
+
+      let message: { jsonrpc?: string; id?: number; method?: string; params?: Record<string, unknown> };
+      try {
+        message = JSON.parse(body);
+      } catch {
+        write({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } });
+        continue;
+      }
+
+      // Notification — no id, no response needed
+      if (message.id === undefined) continue;
+
+      try {
+        const result = await handleRequest(message.method ?? "", message.params ?? {}, driver, tools);
+        write({ jsonrpc: "2.0", id: message.id, result });
+      } catch (error) {
+        write({
+          jsonrpc: "2.0",
+          id: message.id,
+          error: {
+            code: -32601,
+            message: error instanceof Error ? error.message : String(error),
+          },
+        });
+      }
     }
-
-    // Notification — no id, no response needed
-    if (message.id === undefined) continue;
-
-    try {
-      const result = await handleRequest(message.method ?? "", message.params ?? {}, driver, tools);
-      write({ jsonrpc: "2.0", id: message.id, result });
-    } catch (error) {
-      write({
-        jsonrpc: "2.0",
-        id: message.id,
-        error: {
-          code: -32601,
-          message: error instanceof Error ? error.message : String(error),
-        },
-      });
-    }
-  }
+  });
 }
