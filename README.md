@@ -14,6 +14,7 @@
 - **Flexible Operations**: Support for search, suggestions, and pagination
 - **High Performance**: Parallel execution with configurable timeouts
 - **Built-in Caching**: Optional LRU cache support for improved performance
+- **MCP Server**: Built-in MCP server for AI assistant integration
 - **HTTP Server**: Built-in HTTP server for easy API deployment
 
 ## Quick Start
@@ -153,7 +154,24 @@ const custom = createPolySearch({
 });
 ```
 
+## CLI
+
+```bash
+# Search
+polysearch search "TypeScript" --driver duckduckgo --perPage 5
+polysearch search "react" --driver npm --json
+
+# Suggestions
+polysearch suggest "git" --driver google
+
+# Start MCP server
+polysearch mcp --port 3000
+polysearch mcp --drivers "duckduckgo,npm"
+```
+
 ## Server
+
+### HTTP Server
 
 ```typescript
 import { createSearchServer } from "polysearch/servers/http";
@@ -162,9 +180,54 @@ import duckduckgoDriver from "polysearch/drivers/duckduckgo";
 const server = createSearchServer({ driver: duckduckgoDriver() });
 server.serve(3000);
 
-// API Endpoints:
-// - GET /search?q=query&page=1&perPage=10
-// - GET /suggest?q=query
+// GET /search?q=query&page=1&perPage=10
+// GET /suggest?q=query
+```
+
+### MCP Server
+
+```typescript
+import { createMcpServer } from "polysearch/servers/mcp";
+
+// Default: duckduckgo + google-cse (if GOOGLE_CSE_CX is set)
+const server = createMcpServer();
+server.serve(3000);
+
+// Custom driver combination
+const server = createMcpServer({ drivers: ["duckduckgo", "npm", "github-repo"] });
+
+// Use handler directly
+const { handler } = createMcpServer({ drivers: ["duckduckgo"] });
+```
+
+MCP server exposes JSON-RPC 2.0 endpoint at `/mcp` with tools: `search`, `suggest`.
+
+#### Configure in Claude Code
+
+Add to `.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "polysearch": {
+      "command": "npx",
+      "args": ["polysearch", "mcp"]
+    }
+  }
+}
+```
+
+With custom drivers:
+
+```json
+{
+  "mcpServers": {
+    "polysearch": {
+      "command": "npx",
+      "args": ["polysearch", "mcp", "--drivers", "duckduckgo,npm,github-repo"]
+    }
+  }
+}
 ```
 
 ## Types

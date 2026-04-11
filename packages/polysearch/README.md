@@ -103,6 +103,8 @@ const custom = createPolySearch({
 
 ## Server
 
+### HTTP Server
+
 ```typescript
 import { createSearchServer } from "polysearch/servers/http";
 import duckduckgoDriver from "polysearch/drivers/duckduckgo";
@@ -110,9 +112,54 @@ import duckduckgoDriver from "polysearch/drivers/duckduckgo";
 const server = createSearchServer({ driver: duckduckgoDriver() });
 server.serve(3000);
 
-// API Endpoints:
-// - GET /search?q=query&page=1&perPage=10
-// - GET /suggest?q=query
+// GET /search?q=query&page=1&perPage=10
+// GET /suggest?q=query
+```
+
+### MCP Server
+
+```typescript
+import { createMcpServer } from "polysearch/servers/mcp";
+
+// Default: duckduckgo + google-cse (if GOOGLE_CSE_CX is set)
+const server = createMcpServer();
+server.serve(3000);
+
+// Custom driver combination
+const server = createMcpServer({ drivers: ["duckduckgo", "npm", "github-repo"] });
+
+// Use handler directly
+const { handler } = createMcpServer({ drivers: ["duckduckgo"] });
+```
+
+MCP server exposes JSON-RPC 2.0 endpoint at `/mcp` with tools: `search`, `suggest`.
+
+#### Configure in Claude Code
+
+Add to `.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "polysearch": {
+      "command": "npx",
+      "args": ["polysearch", "mcp"]
+    }
+  }
+}
+```
+
+With custom drivers:
+
+```json
+{
+  "mcpServers": {
+    "polysearch": {
+      "command": "npx",
+      "args": ["polysearch", "mcp", "--drivers", "duckduckgo,npm,github-repo"]
+    }
+  }
+}
 ```
 
 ## Types

@@ -1,15 +1,19 @@
 {
   "name": "polysearch",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Unified search interface supporting multiple search engines with deduplication and weighted ranking",
   "keywords": [
     "api-wrapper",
     "autocomplete",
+    "cli",
     "driver",
     "duckduckgo",
+    "google",
     "google-cse",
     "http-client",
     "http-server",
+    "mcp",
+    "mcp-server",
     "npm",
     "npm-registry",
     "package-search",
@@ -34,6 +38,9 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/DemoMacro/polysearch.git"
+  },
+  "bin": {
+    "polysearch": "./dist/cli.mjs"
   },
   "files": [
     "dist"
@@ -61,6 +68,7 @@
     "prepack": "pnpm build"
   },
   "dependencies": {
+    "citty": "^0.2.2",
     "h3": "2.0.1-rc.20",
     "ofetch": "1.5.1",
     "playwright": "1.59.1",
