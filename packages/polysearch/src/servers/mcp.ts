@@ -1,7 +1,4 @@
 import { H3, defineJsonRpcHandler, serve, type EventHandler } from "h3";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { z } from "zod";
 import { createPolySearch } from "../search";
 import { DRIVER_NAMES, createDefaultPolyDriver, createPolyDriver } from "../drivers/registry";
 import type { Driver } from "../types";
@@ -10,6 +7,13 @@ import { version } from "../../package.json";
 export interface McpServerOptions {
   driver?: Driver;
   drivers?: string[];
+}
+
+// Resolve driver from options
+function resolveDriver(options: McpServerOptions) {
+  if (options.driver) return { driver: options.driver, availableDrivers: [...DRIVER_NAMES] as readonly string[] };
+  if (options.drivers?.length) return { driver: createPolyDriver(options.drivers), availableDrivers: options.drivers };
+  return { driver: createDefaultPolyDriver(), availableDrivers: [...DRIVER_NAMES] as readonly string[] };
 }
 
 // Execute a search tool call
@@ -64,13 +68,6 @@ async function callSuggestTool(
     .join("\n")}`;
 
   return { content: [{ type: "text" as const, text }] };
-}
-
-// Resolve driver from options
-function resolveDriver(options: McpServerOptions) {
-  if (options.driver) return { driver: options.driver, availableDrivers: [...DRIVER_NAMES] as readonly string[] };
-  if (options.drivers?.length) return { driver: createPolyDriver(options.drivers), availableDrivers: options.drivers };
-  return { driver: createDefaultPolyDriver(), availableDrivers: [...DRIVER_NAMES] as readonly string[] };
 }
 
 // Build tool definitions for HTTP handler
@@ -133,7 +130,7 @@ export function createMcpHandler(options: McpServerOptions = {}): EventHandler {
   return defineJsonRpcHandler({
     methods: {
       initialize: () => ({
-        protocolVersion: "2026-04-12",
+        protocolVersion: "2025-11-25",
         capabilities: { tools: {} },
         serverInfo: { name: "polysearch", version },
       }),
@@ -168,46 +165,4 @@ export function createMcpServer(options: McpServerOptions = {}): {
     handler,
     serve: (port: number = 3000) => serve(app, { port }),
   };
-}
-
-// Start MCP stdio transport using official SDK
-export async function startMcpStdio(options: McpServerOptions = {}): Promise<void> {
-  const { driver, availableDrivers } = resolveDriver(options);
-
-  const server = new McpServer({ name: "polysearch", version });
-
-  // Register search tool
-  server.registerTool(
-    "search",
-    {
-      description: "Search the web using various engines",
-      inputSchema: z.object({
-        query: z.string().describe("Search query"),
-        driver: z.enum(availableDrivers as [string, ...string[]]).default("duckduckgo").describe("Search engine to use"),
-        perPage: z.number().min(1).max(50).default(10).describe("Results per page"),
-        page: z.number().min(1).default(1).describe("Page number (1-based)"),
-      }),
-    },
-    async (args) => {
-      return callSearchTool(args as Record<string, unknown>, driver);
-    },
-  );
-
-  // Register suggest tool
-  server.registerTool(
-    "suggest",
-    {
-      description: "Get search suggestions/autocomplete",
-      inputSchema: z.object({
-        query: z.string().describe("Partial query for suggestions"),
-        driver: z.enum(availableDrivers as [string, ...string[]]).default("duckduckgo").describe("Search engine to use"),
-      }),
-    },
-    async (args) => {
-      return callSuggestTool(args as Record<string, unknown>, driver);
-    },
-  );
-
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
 }
